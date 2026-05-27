@@ -1,0 +1,2447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아파트 실거래가 프리미엄 대시보드 - MVP</title>
+    <!-- Google Fonts: Plus Jakarta Sans & Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <style>
+        :root {
+            --bg-color: #e3e8e5; /* Soft Eucalyptus Sage Green base */
+            --panel-bg: rgba(255, 255, 255, 0.85); /* Milky White Glass Cream */
+            --panel-border: rgba(192, 132, 252, 0.45); /* Elegant lavender outline */
+            --accent-primary: #38bdf8; /* Pastel Sky Blue */
+            --accent-primary-glow: rgba(56, 189, 248, 0.35);
+            --accent-secondary: #c084fc; /* Lavender Purple */
+            --accent-secondary-glow: rgba(192, 132, 252, 0.35);
+            --accent-pink: #f472b6; /* Pastel Pink */
+            --text-main: #2e2c38; /* Comfortable Sea Charcoal */
+            --text-muted: #5a576b; /* Cozy Dusty Gray-Brown */
+            --success: #059669; /* Herbal Green */
+            --warning: #d97706; /* Warm Ginger Gold */
+            --error: #dc2626; /* Coral Orange */
+            --card-shadow: 0 10px 25px rgba(90, 87, 107, 0.06);
+            --font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e3e8e5 0%, #e6e2ed 50%, #e2ebf0 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: var(--font-family);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(192, 132, 252, 0.35);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(192, 132, 252, 0.6);
+        }
+
+        .container {
+            max-width: 1480px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem;
+        }
+
+        /* Split Dashboard Layout */
+        .dashboard-split-layout {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr;
+            gap: 1.25rem;
+            align-items: start;
+            margin-bottom: 2rem;
+        }
+
+        .layout-left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .layout-right-column {
+            position: sticky;
+            top: 1.5rem;
+            z-index: 100;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-split-layout {
+                grid-template-columns: 1fr;
+            }
+            .layout-right-column {
+                position: static;
+            }
+        }
+
+        /* Glassmorphism Styles */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Header section */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .logo-area h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-area p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(192, 132, 252, 0.3);
+            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(192, 132, 252, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.live {
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse-live 1.8s infinite;
+        }
+
+        .status-dot.demo {
+            background-color: var(--warning);
+            box-shadow: 0 0 10px var(--warning);
+            animation: pulse-demo 1.8s infinite;
+        }
+
+        @keyframes pulse-live {
+            0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(5, 150, 105, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+        }
+
+        @keyframes pulse-demo {
+            0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(217, 119, 6, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+        }
+
+        /* Fallback Alert Banner */
+        .alert-banner {
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            background: rgba(217, 119, 6, 0.08);
+            border: 1px solid rgba(217, 119, 6, 0.25);
+            margin-bottom: 2rem;
+            color: #78350f;
+            font-size: 0.9rem;
+            animation: slideDown 0.5s ease-out;
+        }
+        
+        .alert-banner i {
+            color: var(--warning);
+            font-size: 1.3rem;
+        }
+
+        /* Control Panel - Creamy Macaron Pink Fill */
+        .control-panel {
+            background: rgba(255, 243, 245, 0.88);
+            border: 1.5px solid rgba(244, 114, 182, 0.45);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.85rem;
+            align-items: flex-end;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .input-group label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group select {
+            background: rgba(255, 255, 255, 0.93);
+            border: 1.5px solid rgba(192, 132, 252, 0.35);
+            color: var(--text-main);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: var(--font-family);
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .input-group select:focus {
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 0 3px var(--accent-secondary-glow);
+        }
+
+        .btn-search {
+            background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-secondary) 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.35);
+            font-family: var(--font-family);
+            height: 38px;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(244, 114, 182, 0.5);
+            filter: brightness(1.05);
+        }
+
+        .btn-search:active {
+            transform: translateY(0);
+        }
+
+        /* KPI Dashboard Grid - Compact with Pastel glow fills */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .kpi-card {
+            background: rgba(240, 249, 255, 0.9);
+            border: 1.5px solid rgba(56, 189, 248, 0.4);
+            padding: 1rem 1.25rem;
+            position: relative;
+            overflow: hidden;
+            border-left: 5px solid var(--accent-primary);
+            box-shadow: var(--card-shadow);
+        }
+        
+        .kpi-card.accent-purple {
+            background: rgba(245, 243, 255, 0.9);
+            border-left-color: var(--accent-secondary);
+            border-top: 1.5px solid rgba(192, 132, 252, 0.4);
+            border-right: 1.5px solid rgba(192, 132, 252, 0.4);
+            border-bottom: 1.5px solid rgba(192, 132, 252, 0.4);
+        }
+        
+        .kpi-card.accent-green {
+            background: rgba(240, 253, 250, 0.9);
+            border-left-color: var(--success);
+            border-top: 1.5px solid rgba(52, 211, 153, 0.4);
+            border-right: 1.5px solid rgba(52, 211, 153, 0.4);
+            border-bottom: 1.5px solid rgba(52, 211, 153, 0.4);
+        }
+
+        .kpi-card.accent-rose {
+            background: rgba(255, 243, 245, 0.9);
+            border-left-color: var(--accent-pink);
+            border-top: 1.5px solid rgba(244, 114, 182, 0.4);
+            border-right: 1.5px solid rgba(244, 114, 182, 0.4);
+            border-bottom: 1.5px solid rgba(244, 114, 182, 0.4);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%);
+            border-radius: 50%;
+        }
+
+        .kpi-card .kpi-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .kpi-card .kpi-title i {
+            font-size: 0.95rem;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 1.45rem;
+            font-weight: 700;
+            margin: 0.4rem 0 0.15rem 0;
+            font-feature-settings: "tnum";
+            color: var(--text-main);
+        }
+
+        .kpi-card .kpi-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Visualization Section - Compact */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            animation: slideUp 1s ease-out;
+        }
+
+        @media (max-width: 968px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            padding: 1rem 1.25rem;
+            height: 310px; /* Reduced from 420px to save vertical space */
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--card-shadow);
+        }
+
+        .chart-card:first-of-type {
+            background: rgba(240, 249, 255, 0.88); /* Pastel Sky Blue Cream */
+            border: 1.5px solid rgba(56, 189, 248, 0.4);
+        }
+        
+        .chart-card:last-of-type {
+            background: rgba(245, 243, 255, 0.88); /* Pastel Lavender Cream */
+            border: 1.5px solid rgba(192, 132, 252, 0.4);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-title i {
+            color: var(--accent-secondary);
+        }
+
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            height: calc(100% - 40px);
+            width: 100%;
+        }
+
+        /* Table Section - Creamy Macaron Lavender Fill */
+        .table-section {
+            background: rgba(245, 243, 255, 0.88);
+            border: 1.5px solid rgba(192, 132, 252, 0.45);
+            padding: 1.25rem;
+            animation: slideUp 1.2s ease-out;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .table-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .table-title i {
+            color: var(--accent-secondary);
+        }
+
+        .table-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .search-input {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1.5px solid rgba(192, 132, 252, 0.35);
+            color: var(--text-main);
+            padding: 0.6rem 1rem 0.6rem 2.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            width: 240px;
+            transition: all 0.3s ease;
+            font-family: var(--font-family);
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 0 3px var(--accent-secondary-glow);
+            width: 280px;
+        }
+
+        /* Filter switch style */
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .filter-toggle input {
+            display: none;
+        }
+
+        .toggle-track {
+            width: 38px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.08);
+            border-radius: 99px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-thumb {
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .filter-toggle input:checked + .toggle-track {
+            background: var(--accent-secondary);
+        }
+
+        .filter-toggle input:checked + .toggle-track .toggle-thumb {
+            left: 21px;
+        }
+
+        /* Responsive Table styling */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid rgba(192, 132, 252, 0.25);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(192, 132, 252, 0.06);
+            padding: 0.65rem 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(192, 132, 252, 0.18);
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid rgba(192, 132, 252, 0.08);
+            color: var(--text-main);
+            transition: all 0.2s ease;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(192, 132, 252, 0.05);
+        }
+        
+        /* Cancel Transaction tag */
+        .cancel-row td {
+            color: rgba(220, 38, 38, 0.5) !important;
+            text-decoration: line-through;
+        }
+
+        .tag {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .tag-cancel {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--error);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            text-decoration: none !important;
+            display: inline-block;
+        }
+
+        .tag-normal {
+            background: rgba(5, 150, 105, 0.08);
+            color: var(--success);
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        /* Detail Action Button */
+        .btn-detail {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(192, 132, 252, 0.3);
+            color: var(--text-main);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-family);
+        }
+
+        .btn-detail:hover {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+            color: white;
+            box-shadow: 0 4px 10px rgba(192, 132, 252, 0.25);
+        }
+
+        /* Pagination */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-page {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(192, 132, 252, 0.25);
+            color: var(--text-main);
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-family: var(--font-family);
+        }
+
+        .btn-page:hover:not(:disabled) {
+            background: rgba(192, 132, 252, 0.15);
+            border-color: var(--accent-secondary);
+        }
+
+        .btn-page:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .btn-page.active {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+            color: white;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: rgba(192, 132, 252, 0.15);
+            margin-bottom: 1rem;
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(46, 44, 56, 0.4);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-card {
+            background: #f6f4f8;
+            border: 1px solid rgba(192, 132, 252, 0.35);
+            box-shadow: 0 20px 50px rgba(90, 87, 107, 0.15);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 580px;
+            overflow: hidden;
+            position: relative;
+            transform: scale(0.9);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-overlay.open .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, rgba(244, 114, 182, 0.12) 0%, rgba(192, 132, 252, 0.12) 100%);
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(192, 132, 252, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .btn-modal-close {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-modal-close:hover {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--error);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .detail-item.full-width {
+            grid-column: span 2;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        
+        .detail-price {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-pink);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Loading Spinner overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: inherit;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(192, 132, 252, 0.12);
+            border-top-color: var(--accent-secondary);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header>
+        <div class="logo-area">
+            <h1><i class="fa-solid fa-city"></i> APT Price Analyzer</h1>
+            <p>국토교통부 아파트 매매 실거래가 정보 시스템 MVP</p>
+        </div>
+        <div class="status-badge" id="apiStatusBadge">
+            <span class="status-dot live" id="apiStatusDot"></span>
+            <span id="apiStatusText">실거래가 LIVE API 연결 중...</span>
+        </div>
+    </header>
+
+    <!-- Fallback Alert Banner -->
+    <div class="alert-banner" id="demoAlertBanner">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+            <strong>시뮬레이션 모드 활성화:</strong> 
+            <span id="demoAlertMsg">API 인증키 연동 대기 중으로, 실제 거래 형태를 반영한 고품질 데모 모드로 데이터를 표시합니다.</span>
+        </div>
+    </div>
+
+    <!-- Split Layout Wrapper -->
+    <div class="dashboard-split-layout">
+        <!-- Left Column: Controls, KPIs, List Table, Charts -->
+        <div class="layout-left-column">
+            <!-- Control Panel -->
+            <section class="glass-panel control-panel">
+                <div class="input-group">
+                    <label for="sidoSelect"><i class="fa-solid fa-map-location-dot"></i> 시/도</label>
+                    <select id="sidoSelect">
+                        <option value="">시/도 선택</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="sigunguSelect"><i class="fa-solid fa-location-dot"></i> 시/군/구</label>
+                    <select id="sigunguSelect" disabled>
+                        <option value="">시/군/구 선택</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="yearSelect"><i class="fa-regular fa-calendar"></i> 계약년도</label>
+                    <select id="yearSelect">
+                        <option value="2026">2026년</option>
+                        <option value="2025">2025년</option>
+                        <option value="2024" selected>2024년</option>
+                        <option value="2023">2023년</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="monthSelect"><i class="fa-regular fa-calendar-days"></i> 계약월</label>
+                    <select id="monthSelect">
+                        <option value="01">01월</option>
+                        <option value="02">02월</option>
+                        <option value="03" selected>03월</option>
+                        <option value="04">04월</option>
+                        <option value="05">05월</option>
+                        <option value="06">06월</option>
+                        <option value="07">07월</option>
+                        <option value="08">08월</option>
+                        <option value="09">09월</option>
+                        <option value="10">10월</option>
+                        <option value="11">11월</option>
+                        <option value="12">12월</option>
+                    </select>
+                </div>
+
+                <button class="btn-search" id="btnSearch">
+                    <i class="fa-solid fa-magnifying-glass"></i> 실거래 조회
+                </button>
+            </section>
+
+            <!-- KPI Summary Grid -->
+            <section class="kpi-grid">
+                <!-- Card 1: Count -->
+                <div class="glass-panel kpi-card">
+                    <div class="kpi-title">총 거래 건수 <i class="fa-solid fa-receipt"></i></div>
+                    <div class="kpi-value" style="margin-top: 0.4rem; margin-bottom: 0.4rem; font-size: inherit;">
+                        <span id="kpiCount" style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(244, 114, 182, 0.22) 100%); border: 1.5px solid rgba(192, 132, 252, 0.4); color: var(--text-main); padding: 0.35rem 1.1rem; border-radius: 12px; font-size: 1.3rem; font-weight: 700; box-shadow: 0 4px 12px rgba(192,132,252,0.06);">0 건</span>
+                    </div>
+                    <div class="kpi-sub" id="kpiCountSub">선택 월 기준 전체 매매 계약</div>
+                </div>
+
+                <!-- Card 2: Average -->
+                <div class="glass-panel kpi-card accent-purple">
+                    <div class="kpi-title">평균 거래 금액 <i class="fa-solid fa-calculator"></i></div>
+                    <div class="kpi-value" style="margin-top: 0.4rem; margin-bottom: 0.4rem; font-size: inherit;">
+                        <span id="kpiAvg" style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(192, 132, 252, 0.22) 0%, rgba(56, 189, 248, 0.22) 100%); border: 1.5px solid rgba(192, 132, 252, 0.4); color: var(--text-main); padding: 0.35rem 1.1rem; border-radius: 12px; font-size: 1.3rem; font-weight: 700; box-shadow: 0 4px 12px rgba(192,132,252,0.06);">0억 0,000만</span>
+                    </div>
+                    <div class="kpi-sub" id="kpiAvgSub">해제 건 제외 거래 산술 평균</div>
+                </div>
+
+                <!-- Card 3: Max -->
+                <div class="glass-panel kpi-card accent-green">
+                    <div class="kpi-title">최고 거래가 <i class="fa-solid fa-arrow-trend-up"></i></div>
+                    <div class="kpi-value" style="margin-top: 0.4rem; margin-bottom: 0.4rem; font-size: inherit;">
+                        <span id="kpiMax" style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(52, 211, 153, 0.22) 0%, rgba(56, 189, 248, 0.22) 100%); border: 1.5px solid rgba(52, 211, 153, 0.4); color: var(--text-main); padding: 0.35rem 1.1rem; border-radius: 12px; font-size: 1.3rem; font-weight: 700; box-shadow: 0 4px 12px rgba(52,211,153,0.06);">0억 0,000만</span>
+                    </div>
+                    <div class="kpi-sub" id="kpiMaxSub">-</div>
+                </div>
+
+                <!-- Card 4: Min -->
+                <div class="glass-panel kpi-card accent-rose">
+                    <div class="kpi-title">최저 거래가 <i class="fa-solid fa-arrow-trend-down"></i></div>
+                    <div class="kpi-value" style="margin-top: 0.4rem; margin-bottom: 0.4rem; font-size: inherit;">
+                        <span id="kpiMin" style="display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(244, 114, 182, 0.22) 0%, rgba(192, 132, 252, 0.22) 100%); border: 1.5px solid rgba(244, 114, 182, 0.4); color: var(--text-main); padding: 0.35rem 1.1rem; border-radius: 12px; font-size: 1.3rem; font-weight: 700; box-shadow: 0 4px 12px rgba(244,114,182,0.06);">0억 0,000만</span>
+                    </div>
+                    <div class="kpi-sub" id="kpiMinSub">-</div>
+                </div>
+            </section>
+
+            <!-- Table Section (Brings list search right next to map) -->
+            <section class="glass-panel table-section" style="position: relative;">
+                <div class="loading-overlay" id="tableLoader">
+                    <div class="spinner"></div>
+                </div>
+                
+                <div class="table-header">
+                    <div class="table-title">
+                        <i class="fa-solid fa-list-ol"></i> 아파트 거래 상세 내역
+                    </div>
+                    
+                    <div class="table-actions">
+                        <!-- Filter canceled deals toggle -->
+                        <label class="filter-toggle" id="toggleCancelWrapper">
+                            <input type="checkbox" id="chkExcludeCancel" checked>
+                            <div class="toggle-track">
+                                <div class="toggle-thumb"></div>
+                            </div>
+                            <span>해제 제외</span>
+                        </label>
+
+                        <!-- Search Input -->
+                        <div class="search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" class="search-input" id="searchAptInput" placeholder="아파트명, 법정동 또는 인근 역 검색...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="transactionTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 85px;">계약일</th>
+                                <th style="width: 100px;">법정동</th>
+                                <th>아파트명</th>
+                                <th style="width: 90px; text-align: right;">전용면적</th>
+                                <th style="width: 60px; text-align: right;">층</th>
+                                <th style="width: 120px; text-align: right;">거래금액</th>
+                                <th style="width: 80px; text-align: center;">상태</th>
+                                <th style="width: 75px; text-align: center;">액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Dynamic Rows Inserted Here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-container" id="paginationContainer">
+                    <div id="pageInfo">0건 중 0 - 0 표시</div>
+                    <div class="pagination-buttons" id="pageButtons">
+                        <!-- Page buttons dynamically rendered -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Visualizations Grid (Charts) -->
+            <section class="chart-grid">
+                <!-- Scatter plot -->
+                <div class="glass-panel chart-card" style="position: relative;">
+                    <div class="loading-overlay" id="chart1Loader">
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <i class="fa-solid fa-chart-line"></i> 거래금액 vs 전용면적 분포
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Line plot -->
+                <div class="glass-panel chart-card" style="position: relative;">
+                    <div class="loading-overlay" id="chart2Loader">
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <i class="fa-solid fa-chart-area"></i> 일별 평균 거래 금액 동향
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Sticky Gigantic Map -->
+        <div class="layout-right-column">
+            <!-- Map Section -->
+            <section class="map-section" id="mapSection" style="position: relative; padding: 0; height: 820px; border-radius: 20px; overflow: hidden; box-shadow: 0 15px 35px rgba(192, 132, 252, 0.12); border: 1px solid rgba(255, 255, 255, 0.8); animation: fadeIn 1.2s ease-out; background: var(--panel-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
+                <!-- Floating Header Widget inside map -->
+                <div class="map-header" style="position: absolute; top: 15px; left: 15px; z-index: 100; background: rgba(255, 255, 255, 0.93); backdrop-filter: blur(12px); border: 1.5px solid rgba(192, 132, 252, 0.35); padding: 0.5rem 1rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="map-title" style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-map-location-dot" style="color: var(--accent-secondary);"></i> 아파트 거래 위치 지도
+                    </div>
+                    <div style="width: 1px; height: 12px; background: rgba(0, 0, 0, 0.12);"></div>
+                    <div id="mapStatusText" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">
+                        지도를 로딩하고 있습니다...
+                    </div>
+                </div>
+                <!-- Map full-bleed -->
+                <div id="map" style="width: 100%; height: 100%; position: relative; z-index: 1;"></div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="modalAptName">압구정 현대 1차</h3>
+            <button class="btn-modal-close" onclick="closeModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-grid">
+                <div class="detail-item full-width" style="margin-bottom: 0.5rem;">
+                    <span class="detail-label">거래 금액</span>
+                    <span class="detail-price" id="modalPrice">0억 000만 원</span>
+                </div>
+                
+                <div class="detail-item">
+                    <span class="detail-label">계약 일자</span>
+                    <span class="detail-value" id="modalDate">2024년 03월 15일</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">전용 면적</span>
+                    <span class="detail-value" id="modalArea">131.28 ㎡ (39.7평)</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">층수</span>
+                    <span class="detail-value" id="modalFloor">8층</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">건축 년도 (연식)</span>
+                    <span class="detail-value" id="modalBuildYear">1976년 (48년차)</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">평당 단가</span>
+                    <span class="detail-value" id="modalPyeongPrice">0,000만 원 / 평</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">상태</span>
+                    <span class="detail-value" id="modalStatus">-</span>
+                </div>
+
+                <div class="detail-item full-width">
+                    <span class="detail-label">소재지 주소</span>
+                    <span class="detail-value" id="modalAddress">서울특별시 강남구 압구정동 369-1 (지번)</span>
+                </div>
+
+                <div class="detail-item full-width" id="modalAgentWrapper">
+                    <span class="detail-label">중개사 소재지</span>
+                    <span class="detail-value" id="modalAgent">강남구 공인중개사</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kakao Map Troubleshooting Guide Modal -->
+<div class="modal-overlay" id="kakaoGuideModal">
+    <div class="modal-card" style="max-width: 620px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #f59e0b;"><i class="fa-solid fa-circle-exclamation"></i> 카카오맵 지도 로드 오류 해결 가이드</h3>
+            <button class="btn-modal-close" onclick="window.closeKakaoGuideModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding: 1.75rem;">
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6;">
+                현재 `.env`에 정의된 카카오 JS API 키가 존재하지만, 브라우저 환경에서 카카오 지도 서버(`dapi.kakao.com`)로의 스크립트 연결이 차단되었습니다. 지도를 띄우기 위해 아래의 <strong>3가지 필수 설정</strong>을 확인해 주세요.
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Step 1 -->
+                <div style="background: rgba(0, 0, 0, 0.02); border: 1px solid rgba(192, 132, 252, 0.15); padding: 1.25rem; border-radius: 12px;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--accent-primary); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white;">1</span>
+                        카카오 Developers 플랫폼에 도메인 등록하기
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-left: 1.5rem; margin-bottom: 0.75rem;">
+                        카카오맵 API는 보안을 위해 사전에 등록한 Web 도메인에서만 지도를 불러옵니다.
+                    </p>
+                    <ol style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; margin-left: 2.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <li><a href="https://developers.kakao.com/" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 600;">카카오 디벨로퍼스 콘솔</a>에 접속 및 로그인</li>
+                        <li><strong>[내 애플리케이션]</strong> -> 해당 앱 선택 -> 왼쪽 메뉴의 <strong>[플랫폼]</strong> 클릭</li>
+                        <li><strong>[Web]</strong> 항목의 '사이트 도메인' 등록 수정 버튼 클릭</li>
+                        <li>아래 두 주소를 한 줄씩 등록 후 저장:
+                            <div style="background: rgba(10, 11, 23, 0.8); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); font-family: monospace; color: #10b981; font-size: 0.8rem; margin: 0.5rem 0; width: fit-content; line-height: 1.4;">
+                                http://localhost:8000<br>
+                                http://127.0.0.1:8000
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Step 2 -->
+                <div style="background: rgba(0, 0, 0, 0.02); border: 1px solid rgba(192, 132, 252, 0.15); padding: 1.25rem; border-radius: 12px;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--accent-secondary); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white;">2</span>
+                        브라우저 광고 차단기 및 Brave Shields 해제
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-left: 1.5rem; margin-bottom: 0.5rem;">
+                        uBlock Origin, AdBlock 등 광고 차단 확장 프로그램 또는 Brave 브라우저 자체 보호막(Shields)이 카카오 지도 파일(`dapi.kakao.com`)을 추적 트래커로 판단하여 차단할 수 있습니다.
+                    </p>
+                    <p style="font-size: 0.8rem; color: #ffedd5; line-height: 1.5; margin-left: 1.5rem; display: flex; align-items: flex-start; gap: 0.35rem;">
+                        <i class="fa-solid fa-circle-info" style="color: var(--warning); margin-top: 0.15rem;"></i>
+                        <span>주소창 옆의 광고 차단기 아이콘을 클릭하여 <strong>"이 사이트에서 차단 안 함"</strong> 또는 <strong>"보호 기능 비활성화"</strong>로 예외 처리한 후 새로고침(Ctrl + F5) 해주세요.</span>
+                    </p>
+                </div>
+
+                <!-- Step 3 -->
+                <div style="background: rgba(0, 0, 0, 0.02); border: 1px solid rgba(192, 132, 252, 0.15); padding: 1.25rem; border-radius: 12px;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="background: var(--success); width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white;">3</span>
+                        API 키 값 확인 및 검증
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-left: 1.5rem; margin-bottom: 0.75rem;">
+                        `.env` 파일의 `[kakao] js_key` 값이 카카오 개발자 콘솔의 <strong>[JavaScript 키]</strong>와 완벽히 일치하는지 확인해 주세요. (REST API 키는 사용할 수 없습니다)
+                    </p>
+                    <div style="background: rgba(10, 11, 23, 0.6); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-left: 1.5rem; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <span style="color: var(--text-muted);">현재 백엔드 로드된 키:</span>
+                            <span style="font-family: monospace; color: var(--text-main); font-weight: 600;" id="currentLoadedJsKey">로딩 중...</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-muted);">키 분류 검증:</span>
+                            <span style="color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> JavaScript API Key 타입</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="window.closeKakaoGuideModal()" style="margin-top: 1.5rem; width: 100%; padding: 0.75rem; border: none; background: rgba(255, 255, 255, 0.05); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; font-family: var(--font-family); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                안내창 닫기
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Remote client logging for debugging
+    async function logToServer(level, message, err = null) {
+        try {
+            await fetch("/api/logs", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    level: level,
+                    message: message,
+                    stack: err ? err.stack : null,
+                    url: window.location.href
+                })
+            });
+        } catch (e) {
+            console.error("Failed logging to server:", e);
+        }
+    }
+
+    // Global Error Handlers
+    window.onerror = function(message, source, lineno, colno, error) {
+        logToServer("error", `Global Error: ${message} at ${source}:${lineno}:${colno}`, error);
+        return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+        logToServer("error", `Unhandled Promise Rejection: ${event.reason}`, event.reason);
+    };
+
+    // Global State
+    let sigunguData = {};
+    let rawTransactions = [];
+    let filteredTransactions = [];
+    let scatterChartInstance = null;
+    let trendChartInstance = null;
+    
+    // Kakao Map State
+    let map = null;
+    let geocoder = null;
+    let mapMarkers = [];
+    let mapInfoWindow = null;
+    let isMockMapMode = false;
+    
+    // Pagination state
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    // Elements
+    const sidoSelect = document.getElementById("sidoSelect");
+    const sigunguSelect = document.getElementById("sigunguSelect");
+    const yearSelect = document.getElementById("yearSelect");
+    const monthSelect = document.getElementById("monthSelect");
+    const btnSearch = document.getElementById("btnSearch");
+    const searchInput = document.getElementById("searchAptInput");
+    const chkExcludeCancel = document.getElementById("chkExcludeCancel");
+    
+    // Loaders
+    const chart1Loader = document.getElementById("chart1Loader");
+    const chart2Loader = document.getElementById("chart2Loader");
+    const tableLoader = document.getElementById("tableLoader");
+    
+    // Status and alerts
+    const apiStatusDot = document.getElementById("apiStatusDot");
+    const apiStatusText = document.getElementById("apiStatusText");
+    const demoAlertBanner = document.getElementById("demoAlertBanner");
+    const demoAlertMsg = document.getElementById("demoAlertMsg");
+
+    // Initialize Dashboard
+    window.addEventListener("DOMContentLoaded", async () => {
+        // Init Chart defaults for Sage Cozy Mode
+        Chart.defaults.color = '#5a576b';
+        Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
+        Chart.defaults.font.family = "'Plus Jakarta Sans', 'Noto Sans KR', sans-serif";
+
+        await loadSigunguCodes();
+        
+        // Listeners
+        sidoSelect.addEventListener("change", () => {
+            onSidoChange();
+            panToSelectedRegion();
+        });
+        sigunguSelect.addEventListener("change", panToSelectedRegion);
+        btnSearch.addEventListener("click", handleSearch);
+        searchInput.addEventListener("input", () => {
+            currentPage = 1;
+            applyFiltersAndRender();
+        });
+        chkExcludeCancel.addEventListener("change", () => {
+            currentPage = 1;
+            applyFiltersAndRender();
+        });
+
+        // Initial default search
+        // Select Seoul Gangnam-gu as default
+        setSelectOption(sidoSelect, "서울특별시");
+        onSidoChange();
+        setSelectOption(sigunguSelect, "강남구");
+        
+        // Execute search
+        await handleSearch();
+
+        // Dynamic load of Kakao Map - Async (does not block UI rendering)
+        loadKakaoMapScript().catch(err => {
+            console.error("loadKakaoMapScript async error caught: ", err);
+        });
+    });
+
+    // Pan map to selected region immediately on option change
+    function panToSelectedRegion() {
+        if (isMockMapMode || !map || !geocoder) return;
+        
+        const sido = sidoSelect.value;
+        const sgg = sigunguSelect.options[sigunguSelect.selectedIndex]?.textContent || "";
+        
+        if (!sido) return;
+        
+        // Build address search string e.g. "서울특별시 강남구" or just "서울특별시"
+        let searchAddr = sido;
+        if (sgg && sgg !== "시/군/구 선택") {
+            searchAddr = `${sido} ${sgg}`;
+        }
+        
+        geocoder.addressSearch(searchAddr, (result, status) => {
+            if (status === kakao.maps.services.Status.OK) {
+                const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+                map.panTo(coords);
+                // Adjust zoom level appropriately
+                if (sgg && sgg !== "시/군/구 선택") {
+                    map.setLevel(5); // District level zoom
+                } else {
+                    map.setLevel(8); // Province level zoom
+                }
+            }
+        });
+    }
+
+    // Load Sigungu mapping
+    async function loadSigunguCodes() {
+        try {
+            const res = await fetch("/api/sigungu");
+            sigunguData = await res.json();
+            
+            // Populate Sido
+            sidoSelect.innerHTML = '<option value="">시/도 선택</option>';
+            Object.keys(sigunguData).forEach(sido => {
+                const opt = document.createElement("option");
+                opt.value = sido;
+                opt.textContent = sido;
+                sidoSelect.appendChild(opt);
+            });
+        } catch (err) {
+            console.error("Failed to load Sigungu mapping", err);
+            apiStatusText.textContent = "지역 데이터 로드 실패";
+            apiStatusDot.className = "status-dot demo";
+        }
+    }
+
+    // Populate Sigungu based on Sido
+    function onSidoChange() {
+        const sido = sidoSelect.value;
+        sigunguSelect.innerHTML = '<option value="">시/군/구 선택</option>';
+        
+        if (!sido || !sigunguData[sido]) {
+            sigunguSelect.disabled = true;
+            return;
+        }
+
+        sigunguSelect.disabled = false;
+        const sigungus = sigunguData[sido];
+        
+        Object.keys(sigungus).sort().forEach(sgg => {
+            const opt = document.createElement("option");
+            opt.value = sigungus[sgg]; // District code
+            opt.textContent = sgg;      // District name
+            sigunguSelect.appendChild(opt);
+        });
+    }
+
+    // Utility to set dropdown value
+    function setSelectOption(selectEl, text) {
+        for (let opt of selectEl.options) {
+            if (opt.textContent === text || opt.value === text) {
+                selectEl.value = opt.value;
+                break;
+            }
+        }
+    }
+
+    // Search trigger
+    async function handleSearch() {
+        const sigunguCode = sigunguSelect.value;
+        const sidoName = sidoSelect.value;
+        const sggName = sigunguSelect.options[sigunguSelect.selectedIndex]?.textContent;
+        const year = yearSelect.value;
+        const month = monthSelect.value;
+
+        if (!sigunguCode) {
+            alert("조회할 지역(시/군/구)을 선택해 주세요.");
+            return;
+        }
+
+        const yearMonth = `${year}${month}`;
+        
+        // Show Loading Overlay
+        toggleLoaders(true);
+
+        try {
+            const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
+            const payload = await res.json();
+            
+            rawTransactions = payload.data || [];
+            
+            // Adjust API Status Badge based on source
+            if (payload.source === "live_api") {
+                apiStatusDot.className = "status-dot live";
+                apiStatusText.textContent = "실거래가 LIVE API 연결됨";
+                demoAlertBanner.style.display = "none";
+            } else {
+                apiStatusDot.className = "status-dot demo";
+                apiStatusText.textContent = "데모 시뮬레이션 모드";
+                demoAlertBanner.style.display = "flex";
+                demoAlertMsg.textContent = payload.message || "API 인증키 활성화 대기 중으로, 고품질 데이터 시뮬레이션 모드로 작동합니다.";
+            }
+
+            currentPage = 1;
+            applyFiltersAndRender();
+            
+        } catch (err) {
+            console.error("Error fetching transactions", err);
+            apiStatusDot.className = "status-dot demo";
+            apiStatusText.textContent = "네트워크 통신 오류";
+            demoAlertBanner.style.display = "flex";
+            demoAlertMsg.textContent = "서버와의 연결이 원활하지 않아 로컬 데이터 조회 모드로 실행되었습니다.";
+        } finally {
+            toggleLoaders(false);
+        }
+    }
+
+    function toggleLoaders(active) {
+        const action = active ? 'add' : 'remove';
+        chart1Loader.classList[action]('active');
+        chart2Loader.classList[action]('active');
+        tableLoader.classList[action]('active');
+    }
+
+    // Formatting money (만원단위 -> 억/만원 환산)
+    function formatAmount(amountStr) {
+        if (!amountStr) return "0원";
+        const val = parseInt(amountStr.replace(/,/g, '').trim(), 10);
+        if (isNaN(val)) return amountStr + "만 원";
+        
+        const eok = Math.floor(val / 10000);
+        const man = val % 10000;
+        
+        if (eok > 0) {
+            return `${eok}억 ${man > 0 ? man.toLocaleString() + '만' : ''} 원`;
+        }
+        return `${man.toLocaleString()}만 원`;
+    }
+
+    // Shortening money for map bubbles (e.g. 1억 7500만 -> 1.75억)
+    function shortenAmount(amountStr) {
+        if (!amountStr) return "0원";
+        const val = parseInt(amountStr.replace(/,/g, '').trim(), 10);
+        if (isNaN(val)) return amountStr;
+        
+        const eok = Math.floor(val / 10000);
+        const man = val % 10000;
+        
+        if (eok > 0) {
+            if (man > 0) {
+                const decimal = (man / 10000).toFixed(2).substring(2);
+                const trimmedDecimal = parseFloat("0." + decimal).toString().substring(2);
+                return `${eok}.${trimmedDecimal}억`;
+            }
+            return `${eok}억`;
+        }
+        return `${man}만`;
+    }
+
+    // Filters and Renders data
+    function applyFiltersAndRender() {
+        const query = searchInput.value.toLowerCase().trim();
+        const excludeCancel = chkExcludeCancel.checked;
+
+        // Apply filters
+        filteredTransactions = rawTransactions.filter(item => {
+            // Cancel filter
+            if (excludeCancel && item.cancelDealDay) {
+                return false;
+            }
+            
+            // Text search (Apt name or Dong)
+            if (query) {
+                const name = (item.aptNm || "").toLowerCase();
+                const dong = (item.dong || "").toLowerCase();
+                return name.includes(query) || dong.includes(query);
+            }
+            
+            return true;
+        });
+
+        updateMetrics();
+        updateCharts();
+        renderTable();
+    }
+
+    // Calculates and displays metrics
+    function updateMetrics() {
+        const validDeals = rawTransactions.filter(item => !item.cancelDealDay);
+        
+        const count = filteredTransactions.length;
+        document.getElementById("kpiCount").textContent = `${count.toLocaleString()} 건`;
+        
+        if (count === 0) {
+            document.getElementById("kpiAvg").textContent = "0억 원";
+            document.getElementById("kpiAvgSub").textContent = "해당 조건의 실거래 평균";
+            document.getElementById("kpiMax").textContent = "-";
+            document.getElementById("kpiMaxSub").textContent = "-";
+            document.getElementById("kpiMin").textContent = "-";
+            document.getElementById("kpiMinSub").textContent = "-";
+            return;
+        }
+
+        // 1. Avg Price
+        let sum = 0;
+        let validFilteredCount = 0;
+        filteredTransactions.forEach(item => {
+            if (!item.cancelDealDay) {
+                sum += parseInt(item.dealAmount.replace(/,/g, '').trim(), 10);
+                validFilteredCount++;
+            }
+        });
+        const avg = validFilteredCount > 0 ? Math.round(sum / validFilteredCount) : 0;
+        document.getElementById("kpiAvg").textContent = formatAmount(avg.toString());
+        document.getElementById("kpiAvgSub").textContent = `해제건 제외 ${validFilteredCount}건 실거래 평균`;
+
+        // 2. Max Price (among filtered items)
+        let maxVal = -1;
+        let maxItem = null;
+        
+        // 3. Min Price
+        let minVal = Infinity;
+        let minItem = null;
+
+        filteredTransactions.forEach(item => {
+            if (item.cancelDealDay) return;
+            const amt = parseInt(item.dealAmount.replace(/,/g, '').trim(), 10);
+            if (amt > maxVal) {
+                maxVal = amt;
+                maxItem = item;
+            }
+            if (amt < minVal) {
+                minVal = amt;
+                minItem = item;
+            }
+        });
+
+        if (maxItem) {
+            document.getElementById("kpiMax").textContent = formatAmount(maxVal.toString());
+            document.getElementById("kpiMaxSub").textContent = `${maxItem.aptNm} (${maxItem.area}㎡, ${maxItem.floor}층)`;
+        } else {
+            document.getElementById("kpiMax").textContent = "-";
+            document.getElementById("kpiMaxSub").textContent = "-";
+        }
+
+        if (minItem) {
+            document.getElementById("kpiMin").textContent = formatAmount(minVal.toString());
+            document.getElementById("kpiMinSub").textContent = `${minItem.aptNm} (${minItem.area}㎡, ${minItem.floor}층)`;
+        } else {
+            document.getElementById("kpiMin").textContent = "-";
+            document.getElementById("kpiMinSub").textContent = "-";
+        }
+    }
+
+    // Chart.js Renders
+    function updateCharts() {
+        // Destroy old instances
+        if (scatterChartInstance) scatterChartInstance.destroy();
+        if (trendChartInstance) trendChartInstance.destroy();
+
+        // 1. Scatter Chart data
+        const scatterData = filteredTransactions
+            .filter(item => !item.cancelDealDay)
+            .map(item => {
+                return {
+                    x: parseFloat(item.area),
+                    y: parseInt(item.dealAmount.replace(/,/g, '').trim(), 10) / 10000, // In '억' won
+                    apt: item.aptNm,
+                    floor: item.floor,
+                    date: `${item.dealMonth}/${item.dealDay}`
+                };
+            });
+
+        const ctxScatter = document.getElementById("scatterChart").getContext("2d");
+        scatterChartInstance = new Chart(ctxScatter, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: '거래 분포',
+                    data: scatterData,
+                    backgroundColor: 'rgba(99, 102, 241, 0.65)',
+                    borderColor: '#6366f1',
+                    borderWidth: 1,
+                    pointRadius: 6,
+                    pointHoverRadius: 9,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#111222',
+                        titleColor: '#fff',
+                        bodyColor: '#e5e7eb',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const p = context.raw;
+                                return [
+                                    `단지: ${p.apt} (${p.floor}층)`,
+                                    `면적: ${p.x.toFixed(2)} ㎡`,
+                                    `금액: ${p.y.toFixed(2)} 억 원`,
+                                    `계약: ${p.date}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: '전용면적 (㎡)', color: '#9ca3af' },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    },
+                    y: {
+                        title: { display: true, text: '거래가 (억 원)', color: '#9ca3af' },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    }
+                }
+            }
+        });
+
+        // 2. Trend Line Chart
+        // Group by dealDay and find average
+        const dayGroups = {};
+        filteredTransactions
+            .filter(item => !item.cancelDealDay)
+            .forEach(item => {
+                const day = parseInt(item.dealDay, 10);
+                const amt = parseInt(item.dealAmount.replace(/,/g, '').trim(), 10) / 10000; // in 억
+                if (!dayGroups[day]) {
+                    dayGroups[day] = { sum: 0, count: 0 };
+                }
+                dayGroups[day].sum += amt;
+                dayGroups[day].count++;
+            });
+
+        const sortedDays = Object.keys(dayGroups).map(d => parseInt(d, 10)).sort((a,b) => a - b);
+        const trendLabels = sortedDays.map(d => `${d}일`);
+        const trendPrices = sortedDays.map(d => (dayGroups[d].sum / dayGroups[d].count).toFixed(2));
+
+        const ctxTrend = document.getElementById("trendChart").getContext("2d");
+        trendChartInstance = new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: '일별 평균가',
+                    data: trendPrices,
+                    fill: true,
+                    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+                    borderColor: '#a855f7',
+                    borderWidth: 2,
+                    tension: 0.35,
+                    pointBackgroundColor: '#a855f7',
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#111222',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `평균가: ${context.parsed.y} 억 원`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: {
+                        title: { display: true, text: '평균 거래가 (억)', color: '#9ca3af' },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Render Data Table with Pagination
+    function renderTable() {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+
+        const count = filteredTransactions.length;
+        
+        if (count === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-folder-open"></i>
+                            <p>실거래 기록이 존재하지 않습니다.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            document.getElementById("pageInfo").textContent = "0건 표시";
+            document.getElementById("pageButtons").innerHTML = "";
+            return;
+        }
+
+        // Pagination bounds
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, count);
+        const pageItems = filteredTransactions.slice(startIndex, endIndex);
+
+        pageItems.forEach(item => {
+            const tr = document.createElement("tr");
+            tr.style.cursor = "pointer";
+            tr.title = "클릭하시면 지도에서 단지 위치를 집중해서 보실 수 있습니다.";
+            
+            // Map panning and popup focus on click
+            const escapedAptNm = item.aptNm.replace(/'/g, "\\'");
+            tr.setAttribute("onclick", `if(event.target.tagName !== 'BUTTON') window.focusApartmentOnMap('${escapedAptNm}', '${item.dong}')`);
+            
+            const isCanceled = !!item.cancelDealDay;
+            if (isCanceled) {
+                tr.className = "cancel-row";
+            }
+
+            const areaNum = parseFloat(item.area);
+            const pyeong = Math.round(areaNum / 3.30578);
+
+            tr.innerHTML = `
+                <td>${item.dealMonth}/${item.dealDay}</td>
+                <td>${item.dong}</td>
+                <td style="font-weight: 500; color: var(--text-main);">${item.aptNm}</td>
+                <td style="text-align: right;">${item.area}㎡ <span style="font-size:0.75rem; color:var(--text-muted);">(${pyeong}평)</span></td>
+                <td style="text-align: right;">${item.floor}층</td>
+                <td style="text-align: right; font-weight: 600; color: var(--accent-secondary);">${formatAmount(item.dealAmount)}</td>
+                <td style="text-align: center;">
+                    ${isCanceled 
+                        ? `<span class="tag tag-cancel"><i class="fa-solid fa-ban"></i> 해제</span>` 
+                        : `<span class="tag tag-normal"><i class="fa-solid fa-check"></i> 완료</span>`}
+                </td>
+                <td style="text-align: center;">
+                    <button class="btn-detail" onclick="openDetailModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">상세</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Update Page Info
+        document.getElementById("pageInfo").textContent = `${count}건 중 ${startIndex + 1} - ${endIndex} 표시`;
+        
+        // Render Pagination Buttons
+        const totalPages = Math.ceil(count / itemsPerPage);
+        const pageButtons = document.getElementById("pageButtons");
+        pageButtons.innerHTML = "";
+
+        // Prev Button
+        const prevBtn = document.createElement("button");
+        prevBtn.className = "btn-page";
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.innerHTML = '<i class="fa-solid fa-angle-left"></i>';
+        prevBtn.addEventListener("click", () => {
+            currentPage--;
+            renderTable();
+        });
+        pageButtons.appendChild(prevBtn);
+
+        // Page Numbers (limited to 5)
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement("button");
+            btn.className = `btn-page ${i === currentPage ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.addEventListener("click", () => {
+                currentPage = i;
+                renderTable();
+            });
+            pageButtons.appendChild(btn);
+        }
+
+        // Next Button
+        const nextBtn = document.createElement("button");
+        nextBtn.className = "btn-page";
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.innerHTML = '<i class="fa-solid fa-angle-right"></i>';
+        nextBtn.addEventListener("click", () => {
+            currentPage++;
+            renderTable();
+        });
+        pageButtons.appendChild(nextBtn);
+
+        // Update markers on the map for the current page
+        updateMapMarkers();
+    }
+
+    // Modal Control
+    function openDetailModal(item) {
+        document.getElementById("modalAptName").textContent = item.aptNm;
+        document.getElementById("modalPrice").textContent = formatAmount(item.dealAmount);
+        
+        const dealDateStr = `${item.dealYear}년 ${item.dealMonth}월 ${item.dealDay}일`;
+        document.getElementById("modalDate").textContent = dealDateStr;
+        
+        const areaNum = parseFloat(item.area);
+        const pyeong = (areaNum / 3.30578).toFixed(1);
+        document.getElementById("modalArea").textContent = `${item.area} ㎡ (약 ${pyeong}평)`;
+        document.getElementById("modalFloor").textContent = `${item.floor}층`;
+
+        const bYear = parseInt(item.buildYear, 10);
+        const curYear = new Date().getFullYear();
+        const age = curYear - bYear;
+        document.getElementById("modalBuildYear").textContent = `${item.buildYear}년 (${age}년차)`;
+
+        // Calculate Price per pyeong
+        const priceInt = parseInt(item.dealAmount.replace(/,/g, '').trim(), 10);
+        const pyeongPrice = Math.round(priceInt / pyeong);
+        document.getElementById("modalPyeongPrice").textContent = `약 ${(pyeongPrice).toLocaleString()}만 원 / 평`;
+
+        // Status
+        const statusEl = document.getElementById("modalStatus");
+        if (item.cancelDealDay) {
+            const cYear = item.cancelDealDay.substring(0,4);
+            const cMonth = item.cancelDealDay.substring(4,6);
+            const cDay = item.cancelDealDay.substring(6,8);
+            statusEl.innerHTML = `<span class="tag tag-cancel"><i class="fa-solid fa-ban"></i> 해제 (${cYear}-${cMonth}-${cDay})</span>`;
+        } else {
+            statusEl.innerHTML = `<span class="tag tag-normal"><i class="fa-solid fa-check"></i> 거래 정상 완료</span>`;
+        }
+
+        // Address
+        const addressStr = `${item.sigungu} ${item.dong} ${item.jibun || ""}`;
+        document.getElementById("modalAddress").textContent = addressStr;
+
+        // Broker location
+        const agentWrapper = document.getElementById("modalAgentWrapper");
+        if (item.estateAgentSggNm) {
+            agentWrapper.style.display = "flex";
+            document.getElementById("modalAgent").textContent = item.estateAgentSggNm;
+        } else {
+            agentWrapper.style.display = "none";
+        }
+
+        const modal = document.getElementById("detailModal");
+        modal.classList.add("open");
+    }
+
+    function closeModal() {
+        const modal = document.getElementById("detailModal");
+        modal.classList.remove("open");
+    }
+
+    // Kakao Guide Modal Controls
+    window.openKakaoGuideModal = (jsKey) => {
+        const keyEl = document.getElementById("currentLoadedJsKey");
+        if (keyEl) {
+            keyEl.textContent = jsKey ? `${jsKey.substring(0, 8)}...${jsKey.substring(jsKey.length - 8)}` : "키 없음";
+            keyEl.title = jsKey; // Hover to see full key
+        }
+        const modal = document.getElementById("kakaoGuideModal");
+        modal.classList.add("open");
+    };
+
+    window.closeKakaoGuideModal = () => {
+        const modal = document.getElementById("kakaoGuideModal");
+        modal.classList.remove("open");
+    };
+
+    // Close Kakao Guide Modal on overlay click
+    document.getElementById("kakaoGuideModal").addEventListener("click", (e) => {
+        if (e.target.id === "kakaoGuideModal") {
+            window.closeKakaoGuideModal();
+        }
+    });
+
+    // Close modal on click outside card
+    document.getElementById("detailModal").addEventListener("click", (e) => {
+        if (e.target.id === "detailModal") {
+            closeModal();
+        }
+    });
+
+    // ----------------- Kakao Maps Logic -----------------
+    async function loadKakaoMapScript() {
+        try {
+            logToServer("info", "Fetching Kakao Maps API key from backend");
+            const res = await fetch("/api/kakao-key");
+            const data = await res.json();
+            const jsKey = data.js_key;
+            if (!jsKey) {
+                console.warn("Kakao JS Key not found in .env, hiding map.");
+                logToServer("warn", "Kakao JS Key not found in .env");
+                document.getElementById("mapSection").style.display = "none";
+                return;
+            }
+
+            logToServer("info", "Injecting dynamic Kakao Maps script element");
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    reject(new Error("Kakao Maps SDK 로딩 시간 초과 (10초). 네트워크 상태 혹은 플랫폼 도메인 설정을 확인해 주세요."));
+                }, 10000);
+
+                const script = document.createElement("script");
+                script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${jsKey}&autoload=false&libraries=services`;
+                script.onload = () => {
+                    logToServer("info", "Kakao Maps SDK core script onload fired");
+                    if (typeof kakao !== 'undefined' && kakao.maps) {
+                        kakao.maps.load(() => {
+                            clearTimeout(timer);
+                            logToServer("info", "Kakao Maps modules load callback completed");
+                            resolve();
+                        });
+                    } else {
+                        clearTimeout(timer);
+                        reject(new Error("Kakao Maps object is undefined after script file load"));
+                    }
+                };
+                script.onerror = (e) => {
+                    clearTimeout(timer);
+                    reject(new Error("Kakao Maps SDK script file network load failed."));
+                };
+                document.head.appendChild(script);
+            });
+
+            document.getElementById("mapStatusText").textContent = "지도가 로드되었습니다.";
+            initMap();
+        } catch (err) {
+            console.error("Failed to load Kakao Map script, falling back to Vector Map", err);
+            logToServer("warn", `Offline Vector Map Mode enabled: ${err.message}`);
+            
+            isMockMapMode = true;
+            document.getElementById("mapStatusText").textContent = "로컬 벡터 지도 모드";
+            
+            // Get key in scope for error guide modal
+            const fallbackJsKey = typeof jsKey !== 'undefined' ? jsKey : '';
+            
+            document.getElementById("map").innerHTML = `
+                <div id="vectorMapContainer" style="width: 100%; height: 100%; position: relative; background: linear-gradient(135deg, #e3e8e5 0%, #e6e2ed 50%, #e2ebf0 100%); overflow: hidden; border-radius: 20px; border: none; user-select: none;">
+                    <!-- Grid background with subtle glow -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(rgba(192, 132, 252, 0.2) 1px, transparent 1px), radial-gradient(rgba(56, 189, 248, 0.2) 1px, transparent 1px); background-size: 40px 40px; background-position: 0 0, 20px 20px; opacity: 0.85;"></div>
+                    
+                    <!-- Futuristic grid lines representing roads -->
+                    <div style="position: absolute; top: 30%; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(192, 132, 252, 0.15), transparent); filter: blur(1px);"></div>
+                    <div style="position: absolute; top: 70%; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(192, 132, 252, 0.15), transparent); filter: blur(1px);"></div>
+                    <div style="position: absolute; left: 40%; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.15), transparent); filter: blur(1px);"></div>
+                    
+                    <!-- Aesthetic HUD elements -->
+                    <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(255, 255, 255, 0.93); border: 1px solid rgba(192, 132, 252, 0.35); padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.75rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; z-index: 10; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(90,87,107,0.05);">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background-color: var(--accent-secondary); display: inline-block; box-shadow: 0 0 8px var(--accent-secondary); animation: pulse-live 1.8s infinite;"></span> 로컬 벡터 지도 (체험모드)
+                    </div>
+                    
+                    <!-- Troubleshooting Guide Button inside vector map -->
+                    <button onclick="window.openKakaoGuideModal('${fallbackJsKey}')" style="position: absolute; top: 15px; right: 15px; background: rgba(255, 255, 255, 0.93); border: 1.5px solid rgba(192, 132, 252, 0.35); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.75rem; color: var(--text-main); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; z-index: 10; backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(90, 87, 107, 0.05); transition: all 0.3s; font-family: var(--font-family);" onmouseover="this.style.background='rgba(255, 255, 255, 1)'; this.style.borderColor='var(--accent-secondary)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.93)'; this.style.borderColor='rgba(192, 132, 252, 0.35)';">
+                        <i class="fa-solid fa-circle-question" style="color: var(--accent-secondary);"></i> 카카오맵 연동 해결 가이드
+                    </button>
+                    
+                    <!-- Map Canvas Area for pins -->
+                    <div id="vectorMapCanvas" style="width: 100%; height: 100%; position: relative; z-index: 5;"></div>
+                    
+                    <!-- Custom HTML Overlay for vector markers -->
+                    <div id="vectorMapOverlay" style="position: absolute; display: none; z-index: 20; transform: translate(-50%, -100%); margin-top: -15px; transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);"></div>
+                </div>
+            `;
+            
+            // Add custom vector-pulse style to head if not present
+            if (!document.getElementById("vectorMapStyle")) {
+                const style = document.createElement("style");
+                style.id = "vectorMapStyle";
+                style.textContent = `
+                    @keyframes vector-pulse {
+                        0% { transform: scale(0.5); opacity: 1; }
+                        100% { transform: scale(2.2); opacity: 0; }
+                    }
+                    .vector-pin:hover .vector-pin-tag {
+                        transform: scale(1.05) translateY(-2px) !important;
+                        background: var(--accent-primary) !important;
+                        border-color: var(--accent-primary) !important;
+                        box-shadow: 0 4px 10px rgba(99,102,241,0.4) !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Initial render
+            renderVectorMap();
+        }
+    }
+
+    function initMap() {
+        const mapContainer = document.getElementById("map");
+        const mapOption = {
+            center: new kakao.maps.LatLng(37.566826, 126.9786567), // Default Seoul City Hall
+            level: 5 // Default Zoom
+        };
+        map = new kakao.maps.Map(mapContainer, mapOption);
+        geocoder = new kakao.maps.services.Geocoder();
+
+        const zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        const mapTypeControl = new kakao.maps.MapTypeControl();
+        map.addControl(mapTypeControl, kakao.maps.ControlPosition.TOPRIGHT);
+
+        mapInfoWindow = new kakao.maps.CustomOverlay({
+            clickable: true,
+            xAnchor: 0.5,
+            yAnchor: 1.15
+        });
+        
+        // Expose helper to pan to coordinate
+        window.focusApartmentOnMap = (aptNm, dong) => {
+            if (isMockMapMode) {
+                window.focusVectorApartment(aptNm, dong);
+                return;
+            }
+            if (!map || !mapMarkers.length) return;
+            const marker = mapMarkers.find(m => m.getTitle() === aptNm);
+            if (marker) {
+                const item = filteredTransactions.find(t => t.aptNm === aptNm && t.dong === dong);
+                if (item) {
+                    const aptGroup = { item: item };
+                    
+                    // 1. Closely zoom in (Level 3 is highly focused for detailed block and price views)
+                    map.setLevel(3);
+                    
+                    // 2. Smoothly center to coordinate
+                    map.panTo(marker.getPosition());
+                    
+                    // 3. Trigger premium card overlay
+                    showOverlayForApt(marker.getPosition(), aptGroup);
+                }
+            }
+        };
+
+        // Pan to default selected region after init
+        setTimeout(() => {
+            panToSelectedRegion();
+        }, 300);
+    }
+
+    function updateMapMarkers() {
+        if (isMockMapMode) {
+            renderVectorMap();
+            return;
+        }
+        if (!map || !geocoder) return;
+
+        // Clear existing markers
+        mapMarkers.forEach(m => m.setMap(null));
+        mapMarkers = [];
+        window.closeMapOverlay();
+
+        const count = filteredTransactions.length;
+        if (count === 0) return;
+
+        // Get pagination bounds and page items
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, count);
+        const pageItems = filteredTransactions.slice(startIndex, endIndex);
+
+        // Group by unique apartment name + dong to avoid exact overlapping markers
+        const uniqueApts = {};
+        pageItems.forEach(item => {
+            const key = `${item.aptNm}_${item.dong}`;
+            if (!uniqueApts[key]) {
+                uniqueApts[key] = {
+                    item: item,
+                    deals: []
+                };
+            }
+            uniqueApts[key].deals.push(item);
+        });
+
+        const bounds = new kakao.maps.LatLngBounds();
+        let geocodeCount = 0;
+        const totalToGeocode = Object.keys(uniqueApts).length;
+
+        document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+
+        Object.keys(uniqueApts).forEach(key => {
+            const aptGroup = uniqueApts[key];
+            const item = aptGroup.item;
+            
+            // Build absolute address search string
+            const address = `${item.sigungu || ""} ${item.dong} ${item.jibun || ""}`.trim();
+
+            geocoder.addressSearch(address, (result, status) => {
+                geocodeCount++;
+                if (status === kakao.maps.services.Status.OK) {
+                    const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+
+                    // Create Custom Price Bubble Overlay as the primary marker!
+                    const escapedAptNm = item.aptNm.replace(/'/g, "\\'");
+                    const shortenedPrice = shortenAmount(item.dealAmount);
+                    const cleanAptName = item.aptNm.split(' ')[0]; // Keep bubble text clean
+                    
+                    const markerContent = document.createElement("div");
+                    markerContent.innerHTML = `
+                        <div onclick="window.focusApartmentOnMap('${escapedAptNm}', '${item.dong}')" 
+                             style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border: 1.5px solid rgba(192, 132, 252, 0.6); border-radius: 20px; padding: 0.35rem 0.65rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; font-size: 0.75rem; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 75px; position: relative; z-index: 10; transition: all 0.2s;"
+                             onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.boxShadow='0 0 15px var(--accent-primary-glow)';"
+                             onmouseout="this.style.borderColor='rgba(192, 132, 252, 0.6)'; this.style.boxShadow='0 4px 15px rgba(90, 87, 107, 0.06)';"
+                             title="클릭하시면 상세 실거래 카드를 지도 위에 띄웁니다.">
+                            <div style="font-size: 0.65rem; opacity: 0.85; white-space: nowrap; max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-muted);">
+                                ${cleanAptName}
+                            </div>
+                            <div style="font-weight: 700; color: #db2777; font-size: 0.78rem; margin-top: 0.05rem; white-space: nowrap;">
+                                ${shortenedPrice}
+                            </div>
+                            <!-- Bubble Tail -->
+                            <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid rgba(255, 255, 255, 0.96);"></div>
+                        </div>
+                    `;
+
+                    const customMarker = new kakao.maps.CustomOverlay({
+                        position: coords,
+                        content: markerContent,
+                        xAnchor: 0.5,
+                        yAnchor: 1.05
+                    });
+
+                    customMarker.setMap(map);
+
+                    // Add pseudo-marker object for panTo compatibility
+                    const mockMarker = {
+                        getTitle: () => item.aptNm,
+                        getPosition: () => coords,
+                        setMap: (m) => customMarker.setMap(m)
+                    };
+
+                    aptGroup.marker = mockMarker;
+                    mapMarkers.push(mockMarker);
+                    bounds.extend(coords);
+
+                    // Click event on custom bubble element to open full overlay
+                    markerContent.firstElementChild.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showOverlayForApt(coords, aptGroup);
+                    });
+                }
+
+                if (geocodeCount === totalToGeocode) {
+                    document.getElementById("mapStatusText").textContent = `지도에 ${mapMarkers.length}개 단지 표시됨`;
+                    if (mapMarkers.length > 0) {
+                        map.setBounds(bounds);
+                        if (mapMarkers.length === 1) {
+                            map.setLevel(4);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    function showOverlayForApt(coords, aptGroup) {
+        const item = aptGroup.item;
+        const aptNm = item.aptNm;
+        const floor = item.floor;
+        const area = item.area;
+        const pyeong = Math.round(parseFloat(item.area) / 3.30578);
+        const priceStr = formatAmount(item.dealAmount);
+
+        const encodedItem = encodeURIComponent(JSON.stringify(item));
+
+        const content = `
+            <div style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 1px solid rgba(192, 132, 252, 0.35); box-shadow: 0 10px 25px rgba(90, 87, 107, 0.08); border-radius: 12px; padding: 1rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; min-width: 220px; font-size: 0.85rem; position: relative;">
+                <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${aptNm}</span>
+                    <span style="font-size: 0.75rem; color: var(--accent-secondary); font-weight: 600; background: rgba(192, 132, 252, 0.1); padding: 0.1rem 0.4rem; border-radius: 4px;">${floor}층</span>
+                </div>
+                <div style="color: var(--text-muted); margin-bottom: 0.35rem; font-size: 0.8rem;">전용 ${area}㎡ (약 ${pyeong}평)</div>
+                <div style="color: var(--accent-pink); font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem;">${priceStr}</div>
+                <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+                    <button onclick="window.showDetailFromMap('${encodedItem}')" style="background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-secondary) 100%); border: none; color: white; padding: 0.35rem 0.5rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600; flex: 1; transition: all 0.2s;">상세 보기</button>
+                    <button onclick="window.closeMapOverlay()" style="background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.08); color: var(--text-muted); padding: 0.35rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; width: 30px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid rgba(255, 255, 255, 0.96);"></div>
+            </div>
+        `;
+
+        mapInfoWindow.setContent(content);
+        mapInfoWindow.setPosition(coords);
+        mapInfoWindow.setMap(map);
+        map.panTo(coords);
+    }
+
+    // Expose overlay callbacks globally
+    window.showDetailFromMap = (encodedItem) => {
+        const item = JSON.parse(decodeURIComponent(encodedItem));
+        openDetailModal(item);
+    };
+
+    window.closeMapOverlay = () => {
+        if (mapInfoWindow) {
+            mapInfoWindow.setMap(null);
+        }
+    };
+
+    // ----------------- Offline Vector Map Helper Functions -----------------
+    function renderVectorMap() {
+        const canvas = document.getElementById("vectorMapCanvas");
+        if (!canvas) return;
+        canvas.innerHTML = "";
+        window.closeVectorMapOverlay();
+
+        const count = filteredTransactions.length;
+        if (count === 0) {
+            canvas.innerHTML = `
+                <div style="display:flex; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-size:0.9rem;">
+                    <i class="fa-solid fa-folder-open" style="margin-right:0.5rem;"></i> 해당 조건의 실거래 기록이 존재하지 않습니다.
+                </div>
+            `;
+            return;
+        }
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, count);
+        const pageItems = filteredTransactions.slice(startIndex, endIndex);
+
+        // Group unique apartments by name + dong to avoid overlaps
+        const uniqueApts = {};
+        pageItems.forEach(item => {
+            const key = `${item.aptNm}_${item.dong}`;
+            if (!uniqueApts[key]) {
+                uniqueApts[key] = {
+                    item: item,
+                    deals: []
+                };
+            }
+            uniqueApts[key].deals.push(item);
+        });
+
+        let idx = 0;
+        const keys = Object.keys(uniqueApts);
+        
+        keys.forEach(key => {
+            const aptGroup = uniqueApts[key];
+            const item = aptGroup.item;
+            
+            // Deterministic calculation of coordinates using character codes
+            let seedX = 0;
+            let seedY = 0;
+            const str = item.aptNm + item.dong;
+            for (let i = 0; i < str.length; i++) {
+                seedX += str.charCodeAt(i) * (i + 1);
+                seedY += str.charCodeAt(i) * (i + 2);
+            }
+            
+            const xPercent = 15 + (seedX % 70); // Keep between 15% and 85%
+            const yPercent = 15 + (seedY % 70); // Keep between 15% and 85%
+            
+            // Create Vector Pin element
+            const pin = document.createElement("div");
+            pin.className = "vector-pin";
+            pin.id = `vector-pin-${idx}`;
+            pin.style.position = "absolute";
+            pin.style.left = `${xPercent}%`;
+            pin.style.top = `${yPercent}%`;
+            pin.style.transform = "translate(-50%, -50%)";
+            pin.style.cursor = "pointer";
+            pin.style.zIndex = "5";
+            pin.style.transition = "all 0.3s ease";
+            
+            const shortenedPrice = shortenAmount(item.dealAmount);
+            const cleanAptName = item.aptNm.split(' ')[0]; // Keep bubble text clean
+            
+            // Premium glowing custom design with price tag
+            pin.innerHTML = `
+                <div style="position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                    <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(192, 132, 252, 0.3); animation: vector-pulse 1.8s infinite;"></div>
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: var(--accent-secondary); border: 2px solid white; box-shadow: 0 0 12px var(--accent-secondary);"></div>
+                    <div class="vector-pin-tag" style="position: absolute; top: 16px; background: rgba(255, 255, 255, 0.96); padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.75rem; color: var(--text-main); font-weight: 600; border: 1px solid rgba(192, 132, 252, 0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.05rem; line-height: 1.25; text-align: center;">
+                        <span style="font-size: 0.65rem; opacity: 0.85; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-weight: 500;">${cleanAptName}</span>
+                        <span style="color: #db2777; font-weight: 700; font-size: 0.78rem; white-space: nowrap;">${shortenedPrice}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Click Handler
+            pin.addEventListener("click", (e) => {
+                e.stopPropagation();
+                showVectorOverlay(xPercent, yPercent, aptGroup);
+            });
+            
+            canvas.appendChild(pin);
+            idx++;
+        });
+
+        document.getElementById("mapStatusText").textContent = `로컬 벡터 지도에 ${idx}개 단지 가상 플롯 완료`;
+    }
+
+    function showVectorOverlay(x, y, aptGroup) {
+        const overlay = document.getElementById("vectorMapOverlay");
+        if (!overlay) return;
+
+        const item = aptGroup.item;
+        const aptNm = item.aptNm;
+        const floor = item.floor;
+        const area = item.area;
+        const pyeong = Math.round(parseFloat(item.area) / 3.30578);
+        const priceStr = formatAmount(item.dealAmount);
+
+        const encodedItem = encodeURIComponent(JSON.stringify(item));
+
+        overlay.style.left = `${x}%`;
+        overlay.style.top = `${y}%`;
+        overlay.style.display = "block";
+        overlay.style.transform = "translate(-50%, -100%) scale(1)";
+
+        overlay.innerHTML = `
+            <div style="background: rgba(24, 23, 45, 0.94); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); border-radius: 12px; padding: 1rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; min-width: 220px; font-size: 0.85rem; position: relative; animation: slideUp 0.2s ease;">
+                <div style="font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${aptNm}</span>
+                    <span style="font-size: 0.75rem; color: var(--accent-secondary); font-weight: 600; background: rgba(192, 132, 252, 0.15); padding: 0.1rem 0.4rem; border-radius: 4px;">${floor}층</span>
+                </div>
+                <div style="color: #cbd5e1; margin-bottom: 0.35rem; font-size: 0.8rem;">전용 ${area}㎡ (약 ${pyeong}평)</div>
+                <div style="color: var(--accent-pink); font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem;">${priceStr}</div>
+                <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+                    <button onclick="window.showDetailFromMap('${encodedItem}')" style="background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-secondary) 100%); border: none; color: white; padding: 0.35rem 0.5rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-weight: 600; flex: 1; transition: all 0.2s;">상세 보기</button>
+                    <button onclick="window.closeVectorMapOverlay()" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255, 255, 255, 0.12); color: #cbd5e1; padding: 0.35rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; width: 30px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid rgba(24, 23, 45, 0.94);"></div>
+            </div>
+        `;
+    }
+
+    window.closeVectorMapOverlay = () => {
+        const overlay = document.getElementById("vectorMapOverlay");
+        if (overlay) {
+            overlay.style.display = "none";
+        }
+    };
+
+    window.focusVectorApartment = (aptNm, dong) => {
+        const count = filteredTransactions.length;
+        if (count === 0) return;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, count);
+        const pageItems = filteredTransactions.slice(startIndex, endIndex);
+
+        const item = pageItems.find(t => t.aptNm === aptNm && t.dong === dong);
+        if (!item) return;
+
+        const pinIndex = pageItems.findIndex(t => t.aptNm === aptNm && t.dong === dong);
+
+        // Remove active pulsing scale from all vector pins first
+        document.querySelectorAll(".vector-pin").forEach(p => {
+            p.style.transform = "translate(-50%, -50%) scale(1)";
+            p.style.zIndex = "5";
+            const tag = p.querySelector(".vector-pin-tag");
+            if (tag) {
+                tag.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                tag.style.boxShadow = "0 4px 15px rgba(0,0,0,0.5)";
+            }
+        });
+
+        // Highlight selected vector pin closely
+        const activePin = document.getElementById(`vector-pin-${pinIndex}`);
+        if (activePin) {
+            activePin.style.transform = "translate(-50%, -50%) scale(1.25)";
+            activePin.style.zIndex = "1000";
+            const tag = activePin.querySelector(".vector-pin-tag");
+            if (tag) {
+                tag.style.borderColor = "var(--accent-primary)";
+                tag.style.boxShadow = "0 0 20px var(--accent-primary-glow)";
+            }
+        }
+
+        // Recalculate deterministic coordinate
+        let seedX = 0;
+        let seedY = 0;
+        const str = aptNm + dong;
+        for (let i = 0; i < str.length; i++) {
+            seedX += str.charCodeAt(i) * (i + 1);
+            seedY += str.charCodeAt(i) * (i + 2);
+        }
+        
+        const xPercent = 15 + (seedX % 70);
+        const yPercent = 15 + (seedY % 70);
+
+        const aptGroup = { item: item };
+        showVectorOverlay(xPercent, yPercent, aptGroup);
+    };
+</script>
+</body>
+</html>

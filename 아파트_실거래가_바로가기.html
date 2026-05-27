@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=http://localhost:8000/" />
+    <title>아파트 실거래가 분석 대시보드 바로가기</title>
+    <style>
+        body {
+            background-color: #0b0c15;
+            color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', 'Malgun Gothic', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background: rgba(20, 22, 45, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 30%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            color: #9ca3af;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            transition: all 0.2s ease;
+        }
+        a:hover {
+            background: #6366f1;
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>도시 실거래가 분석 시스템</h2>
+        <p>실거래가 분석 대시보드로 이동하고 있습니다...</p>
+        <a href="http://localhost:8000/">대시보드로 직접 이동</a>
+    </div>
+
+    <script>
+        // Automatic redirection to local dashboard
+        setTimeout(function() {
+            window.location.href = "http://localhost:8000/";
+        }, 100);
+    </script>
+</body>
+</html>
