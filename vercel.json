@@ -1,7 +1,10 @@
 {
   "version": 2,
-  "regions": ["hnd1"],
   "builds": [
+    {
+      "src": "api/edge-proxy.js",
+      "use": "@vercel/node"
+    },
     {
       "src": "api/index.py",
       "use": "@vercel/python"
@@ -9,8 +12,12 @@
   ],
   "routes": [
     {
+      "src": "/api/edge-proxy",
+      "dest": "/api/edge-proxy.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     }
   ]
 }

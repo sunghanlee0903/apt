@@ -1441,59 +1441,52 @@
         toggleLoaders(true);
 
         try {
-            // 1단계: 백엔드에서 API 키 가져오기
-            const keyRes = await fetch(`/api/apt-key`);
-            const keyData = await keyRes.json();
-            const aptApiKey = keyData.api_key;
-
+            // Edge Function 호출: Cloudflare 서울 PoP → data.go.kr (한국 IP 요청)
             let payload;
+            try {
+                const edgeRes = await fetch(
+                    `/api/edge-proxy?sigungu_code=${sigunguCode}&year_month=${yearMonth}`,
+                    { signal: AbortSignal.timeout(10000) }
+                );
+                const xmlText = await edgeRes.text();
 
-            if (aptApiKey) {
-                // 2단계: 브라우저에서 data.go.kr 직접 호출 (한국 IP 사용)
-                // Vercel 서버(미국 IP)를 거치지 않아 403 차단 없음
-                try {
-                    const govUrl = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(aptApiKey)}&LAWD_CD=${sigunguCode}&DEAL_YMD=${yearMonth}&numOfRows=500&pageNo=1`;
-                    const govRes = await fetch(govUrl, { signal: AbortSignal.timeout(8000) });
-                    const xmlText = await govRes.text();
-
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-                    const resultCode = xmlDoc.querySelector("resultCode")?.textContent?.trim();
-                    const items = xmlDoc.querySelectorAll("item");
-
-                    if (resultCode === "00" && items.length > 0) {
-                        const data = Array.from(items).map(item => {
-                            const get = tag => item.querySelector(tag)?.textContent?.trim() || "";
-                            return {
-                                aptNm: get("aptNm"),
-                                buildYear: get("buildYear"),
-                                dealAmount: get("dealAmount"),
-                                dealYear: get("dealYear"),
-                                dealMonth: get("dealMonth"),
-                                dealDay: get("dealDay"),
-                                area: get("excluUseAr"),
-                                floor: get("floor"),
-                                dong: get("umdNm"),
-                                roadname: get("roadNm"),
-                                jibun: get("jibun"),
-                                sigungu: get("sggNm"),
-                                cancelDealDay: get("cdealDay"),
-                                estateAgentSggNm: get("estateAgentSggNm"),
-                            };
-                        });
-                        payload = { status: "success", source: "live_api", message: "실거래가 LIVE 데이터 조회 성공", count: data.length, data };
-                    } else {
-                        // API 오류 응답 → 서버 폴백
-                        throw new Error(`API resultCode: ${resultCode}`);
-                    }
-                } catch (directErr) {
-                    console.warn("브라우저 직접 호출 실패, 서버 폴백:", directErr.message);
-                    const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
-                    payload = await res.json();
+                if (!edgeRes.ok || xmlText.trim().startsWith('{')) {
+                    throw new Error(`Edge proxy error: ${edgeRes.status}`);
                 }
-            } else {
-                // API 키 없음 → 서버 폴백 (데모 모드)
+
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                const resultCode = xmlDoc.querySelector("resultCode")?.textContent?.trim();
+                const items = xmlDoc.querySelectorAll("item");
+
+                if (resultCode === "00" && items.length > 0) {
+                    const data = Array.from(items).map(item => {
+                        const get = tag => item.querySelector(tag)?.textContent?.trim() || "";
+                        return {
+                            aptNm: get("aptNm"),
+                            buildYear: get("buildYear"),
+                            dealAmount: get("dealAmount"),
+                            dealYear: get("dealYear"),
+                            dealMonth: get("dealMonth"),
+                            dealDay: get("dealDay"),
+                            area: get("excluUseAr"),
+                            floor: get("floor"),
+                            dong: get("umdNm"),
+                            roadname: get("roadNm"),
+                            jibun: get("jibun"),
+                            sigungu: get("sggNm"),
+                            cancelDealDay: get("cdealDay"),
+                            estateAgentSggNm: get("estateAgentSggNm"),
+                        };
+                    });
+                    payload = { status: "success", source: "live_api", message: "실거래가 LIVE 데이터 조회 성공", count: data.length, data };
+                } else if (resultCode === "00" && items.length === 0) {
+                    payload = { status: "success", source: "live_api", message: "해당 기간 거래 데이터가 없습니다.", count: 0, data: [] };
+                } else {
+                    throw new Error(`API resultCode: ${resultCode}`);
+                }
+            } catch (edgeErr) {
+                console.warn("Edge proxy 실패, 데모 폴백:", edgeErr.message);
                 const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
                 payload = await res.json();
             }
