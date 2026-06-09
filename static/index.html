@@ -1171,14 +1171,21 @@
                         카카오맵 API는 보안을 위해 사전에 등록한 Web 도메인에서만 지도를 불러옵니다.
                     </p>
                     <ol style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; margin-left: 2.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
-                        <li><a href="https://developers.kakao.com/" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 600;">카카오 디벨로퍼스 콘솔</a>에 접속 및 로그인</li>
-                        <li><strong>[내 애플리케이션]</strong> -> 해당 앱 선택 -> 왼쪽 메뉴의 <strong>[플랫폼]</strong> 클릭</li>
-                        <li><strong>[Web]</strong> 항목의 '사이트 도메인' 등록 수정 버튼 클릭</li>
-                        <li>아래 두 주소를 한 줄씩 등록 후 저장:
-                            <div style="background: rgba(10, 11, 23, 0.8); padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); font-family: monospace; color: #10b981; font-size: 0.8rem; margin: 0.5rem 0; width: fit-content; line-height: 1.4;">
+                        <li><a href="https://developers.kakao.com/console/app" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 600;">카카오 디벨로퍼스 콘솔</a>에 접속 및 로그인</li>
+                        <li><strong>[내 애플리케이션]</strong> → 해당 앱 선택 → 왼쪽 메뉴의 <strong>[플랫폼]</strong> 클릭</li>
+                        <li><strong>[Web]</strong> 항목의 '사이트 도메인' 등록/수정 버튼 클릭</li>
+                        <li>아래 도메인들을 <strong>한 줄씩</strong> 추가 후 저장:
+                            <div style="background: rgba(10, 11, 23, 0.8); padding: 0.65rem 0.85rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); font-family: monospace; color: #10b981; font-size: 0.8rem; margin: 0.5rem 0; line-height: 1.7;">
+                                <div style="color: #6b7280; font-size: 0.7rem; margin-bottom: 0.25rem;">▸ Vercel 배포 도메인 (필수)</div>
+                                https://apt-lime-eight.vercel.app<br>
+                                <div style="color: #6b7280; font-size: 0.7rem; margin: 0.35rem 0 0.25rem;">▸ 로컬 개발 도메인 (선택)</div>
                                 http://localhost:8000<br>
                                 http://127.0.0.1:8000
                             </div>
+                            <p style="font-size: 0.75rem; color: #f59e0b; margin-top: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                저장 후 카카오 서버 반영까지 <strong>최대 1~2분</strong>이 소요됩니다. 저장 후 새로고침 해주세요.
+                            </p>
                         </li>
                     </ol>
                 </div>
@@ -1434,12 +1441,66 @@
         toggleLoaders(true);
 
         try {
-            const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
-            const payload = await res.json();
-            
+            // 1단계: 백엔드에서 API 키 가져오기
+            const keyRes = await fetch(`/api/apt-key`);
+            const keyData = await keyRes.json();
+            const aptApiKey = keyData.api_key;
+
+            let payload;
+
+            if (aptApiKey) {
+                // 2단계: 브라우저에서 data.go.kr 직접 호출 (한국 IP 사용)
+                // Vercel 서버(미국 IP)를 거치지 않아 403 차단 없음
+                try {
+                    const govUrl = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(aptApiKey)}&LAWD_CD=${sigunguCode}&DEAL_YMD=${yearMonth}&numOfRows=500&pageNo=1`;
+                    const govRes = await fetch(govUrl, { signal: AbortSignal.timeout(8000) });
+                    const xmlText = await govRes.text();
+
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                    const resultCode = xmlDoc.querySelector("resultCode")?.textContent?.trim();
+                    const items = xmlDoc.querySelectorAll("item");
+
+                    if (resultCode === "00" && items.length > 0) {
+                        const data = Array.from(items).map(item => {
+                            const get = tag => item.querySelector(tag)?.textContent?.trim() || "";
+                            return {
+                                aptNm: get("aptNm"),
+                                buildYear: get("buildYear"),
+                                dealAmount: get("dealAmount"),
+                                dealYear: get("dealYear"),
+                                dealMonth: get("dealMonth"),
+                                dealDay: get("dealDay"),
+                                area: get("excluUseAr"),
+                                floor: get("floor"),
+                                dong: get("umdNm"),
+                                roadname: get("roadNm"),
+                                jibun: get("jibun"),
+                                sigungu: get("sggNm"),
+                                cancelDealDay: get("cdealDay"),
+                                estateAgentSggNm: get("estateAgentSggNm"),
+                            };
+                        });
+                        payload = { status: "success", source: "live_api", message: "실거래가 LIVE 데이터 조회 성공", count: data.length, data };
+                    } else {
+                        // API 오류 응답 → 서버 폴백
+                        throw new Error(`API resultCode: ${resultCode}`);
+                    }
+                } catch (directErr) {
+                    console.warn("브라우저 직접 호출 실패, 서버 폴백:", directErr.message);
+                    const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
+                    payload = await res.json();
+                }
+            } else {
+                // API 키 없음 → 서버 폴백 (데모 모드)
+                const res = await fetch(`/api/transactions?sigungu_code=${sigunguCode}&year_month=${yearMonth}`);
+                payload = await res.json();
+            }
+
             rawTransactions = payload.data || [];
-            
-            // Adjust API Status Badge based on source
+
+            // API 상태 배지 업데이트
             if (payload.source === "live_api") {
                 apiStatusDot.className = "status-dot live";
                 apiStatusText.textContent = "실거래가 LIVE API 연결됨";
@@ -1453,7 +1514,7 @@
 
             currentPage = 1;
             applyFiltersAndRender();
-            
+
         } catch (err) {
             console.error("Error fetching transactions", err);
             apiStatusDot.className = "status-dot demo";
@@ -1990,7 +2051,8 @@
             logToServer("warn", `Offline Vector Map Mode enabled: ${err.message}`);
             
             isMockMapMode = true;
-            document.getElementById("mapStatusText").textContent = "로컬 벡터 지도 모드";
+            const currentDomain = window.location.origin;
+            document.getElementById("mapStatusText").textContent = `카카오 지도 미연동 — 개발자 콘솔에 도메인 등록 필요`;
             
             // Get key in scope for error guide modal
             const fallbackJsKey = typeof jsKey !== 'undefined' ? jsKey : '';

@@ -16,12 +16,18 @@ app = FastAPI(title="Apartment Transaction Price MVP")
 ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 
 def get_api_key():
-    """Reads and parses the API key from .env robustly."""
+    """Reads the API key. Checks environment variable first (Vercel), then .env file (local)."""
+    # 1. Check environment variable (for Vercel / cloud deployment)
+    env_key = os.environ.get('APT_KEY')
+    if env_key:
+        return env_key
+
+    # 2. Fall back to .env file (for local development)
     if not os.path.exists(ENV_PATH):
         print("Warning: .env file not found!")
         return None
     
-    # 1. Try configparser (INI style)
+    # Try configparser (INI style)
     try:
         config = configparser.ConfigParser()
         config.read(ENV_PATH, encoding="utf-8")
@@ -32,14 +38,13 @@ def get_api_key():
     except Exception as e:
         print("Configparser failed, trying line parsing:", e)
         
-    # 2. Try line by line regex parsing (dotenv fallback)
+    # Try line by line regex parsing (dotenv fallback)
     try:
         with open(ENV_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                # Match key = "..." or key=... or APT_KEY=...
                 m = re.search(r'^(?:APT_KEY|key)\s*=\s*["\']?([^"\']+)["\']?', line, re.IGNORECASE)
                 if m:
                     return m.group(1).strip()
@@ -49,11 +54,17 @@ def get_api_key():
     return None
 
 def get_kakao_js_key():
-    """Reads and parses the Kakao JS key from .env robustly."""
+    """Reads the Kakao JS key. Checks environment variable first (Vercel), then .env file (local)."""
+    # 1. Check environment variable (for Vercel / cloud deployment)
+    env_key = os.environ.get('KAKAO_JS_KEY')
+    if env_key:
+        return env_key
+
+    # 2. Fall back to .env file (for local development)
     if not os.path.exists(ENV_PATH):
         return None
     
-    # 1. Try configparser (INI style)
+    # Try configparser (INI style)
     try:
         config = configparser.ConfigParser()
         config.read(ENV_PATH, encoding="utf-8")
@@ -64,7 +75,7 @@ def get_kakao_js_key():
     except Exception as e:
         print("Configparser failed for kakao, trying line parsing:", e)
         
-    # 2. Try line by line regex parsing (dotenv fallback)
+    # Try line by line regex parsing (dotenv fallback)
     try:
         with open(ENV_PATH, "r", encoding="utf-8") as f:
             for line in f:
@@ -341,6 +352,14 @@ def get_kakao_key():
     js_key = get_kakao_js_key()
     return {"js_key": js_key or ""}
 
+@app.get("/api/apt-key")
+def get_apt_key():
+    """Returns the Public Data Portal APT API Key for client-side direct calls.
+    This allows the browser (Korean IP) to call data.go.kr directly,
+    bypassing Vercel server geographic IP restrictions."""
+    api_key = get_api_key()
+    return {"api_key": api_key or ""}
+
 from pydantic import BaseModel
 
 class ClientLog(BaseModel):
@@ -352,7 +371,11 @@ class ClientLog(BaseModel):
 @app.post("/api/logs")
 def post_client_logs(log: ClientLog):
     """Logs client-side errors and warnings to a file for developer analysis."""
-    log_path = os.path.join(os.path.dirname(__file__), "client_errors.log")
+    # Vercel serverless: only /tmp is writable. Local: use project dir.
+    if os.environ.get("VERCEL"):
+        log_path = "/tmp/client_errors.log"
+    else:
+        log_path = os.path.join(os.path.dirname(__file__), "client_errors.log")
     try:
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(f"[{log.level.upper()}] Message: {log.message}\nURL: {log.url}\nStack: {log.stack}\n---\n")
@@ -361,14 +384,16 @@ def post_client_logs(log: ClientLog):
         print("Failed to write client log:", e)
         return {"status": "failed", "error": str(e)}
 
-# Mount static files folder
-os.makedirs(os.path.join(os.path.dirname(__file__), "static"), exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files folder (절대경로 사용 - Vercel 환경 호환)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/")
 def read_root():
     """Serves the static index.html dashboard file."""
-    index_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {
