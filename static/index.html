@@ -2274,15 +2274,22 @@
                     // 2. Fetch from Kakao Geocoder API with small delay
                     await new Promise(resolve => {
                         geocoder.addressSearch(address, (result, status) => {
-                            geocodeCount++;
                             if (status === kakao.maps.services.Status.OK) {
                                 const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
                                 addressCache[address] = coords;
                                 createMarker(coords, aptGroup);
+                                
+                                geocodeCount++;
+                                document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+                                if (geocodeCount === totalToGeocode) {
+                                    finalizeBounds();
+                                }
+                                resolve();
                             } else {
                                 // Fallback: Search using Sigungu + Dong only (without Jibun)
                                 const fallbackAddress = `${item.sigungu || ""} ${item.dong}`.trim();
                                 geocoder.addressSearch(fallbackAddress, (fbResult, fbStatus) => {
+                                    geocodeCount++;
                                     if (fbStatus === kakao.maps.services.Status.OK) {
                                         const coords = new kakao.maps.LatLng(fbResult[0].y, fbResult[0].x);
                                         addressCache[address] = coords;
@@ -2290,13 +2297,13 @@
                                     } else {
                                         console.warn(`주소 검색 및 폴백 실패: ${address}`);
                                     }
+                                    document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+                                    if (geocodeCount === totalToGeocode) {
+                                        finalizeBounds();
+                                    }
+                                    resolve(); // Resolve only after fallback is fully finished
                                 });
                             }
-                            document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
-                            if (geocodeCount === totalToGeocode) {
-                                finalizeBounds();
-                            }
-                            resolve();
                         });
                     });
                     // Sleep 20ms to avoid burst rate-limiting from Kakao Servers
