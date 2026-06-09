@@ -23,7 +23,7 @@ export default async function handler(req) {
   }
 
   const apiUrl = new URL(
-    'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev'
+    'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade'
   );
   apiUrl.searchParams.set('serviceKey', apiKey);
   apiUrl.searchParams.set('LAWD_CD', sigunguCode);
