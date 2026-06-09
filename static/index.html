@@ -2152,6 +2152,8 @@
         }, 300);
     }
 
+    const addressCache = {}; // Global address cache to optimize and prevent API rate-limits
+
     function updateMapMarkers() {
         if (isMockMapMode) {
             renderVectorMap();
@@ -2182,86 +2184,126 @@
 
         const bounds = new kakao.maps.LatLngBounds();
         let geocodeCount = 0;
-        const totalToGeocode = Object.keys(uniqueApts).length;
+        const keys = Object.keys(uniqueApts);
+        const totalToGeocode = keys.length;
 
-        document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+        document.getElementById("mapStatusText").textContent = `위치 검색 중 (0/${totalToGeocode})...`;
 
-        Object.keys(uniqueApts).forEach(key => {
-            const aptGroup = uniqueApts[key];
+        // Helper: Create Custom Price Overlay Marker
+        const createMarker = (coords, aptGroup) => {
             const item = aptGroup.item;
+            const shortenedPrice = shortenAmount(item.dealAmount);
+            const cleanAptName = item.aptNm.split(' ')[0];
             
-            // Build absolute address search string
-            const address = `${item.sigungu || ""} ${item.dong} ${item.jibun || ""}`.trim();
+            const markerContent = document.createElement("div");
+            markerContent.style.pointerEvents = "auto";
+            markerContent.innerHTML = `
+                <div style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border: 1.5px solid rgba(192, 132, 252, 0.6); border-radius: 20px; padding: 0.35rem 0.65rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; font-size: 0.75rem; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 75px; position: relative; z-index: 10; transition: all 0.2s;"
+                     onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.boxShadow='0 0 15px var(--accent-primary-glow)';"
+                     onmouseout="this.style.borderColor='rgba(192, 132, 252, 0.6)'; this.style.boxShadow='0 4px 15px rgba(90, 87, 107, 0.06)';"
+                     title="클릭하시면 상세 실거래 카드를 지도 위에 띄웁니다.">
+                    <div style="font-size: 0.65rem; opacity: 0.85; white-space: nowrap; max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-muted); pointer-events: none;">
+                        ${cleanAptName}
+                    </div>
+                    <div style="font-weight: 700; color: #db2777; font-size: 0.78rem; margin-top: 0.05rem; white-space: nowrap; pointer-events: none;">
+                        ${shortenedPrice}
+                    </div>
+                    <!-- Bubble Tail -->
+                    <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid rgba(255, 255, 255, 0.96); pointer-events: none;"></div>
+                </div>
+            `;
 
-            geocoder.addressSearch(address, (result, status) => {
-                geocodeCount++;
-                if (status === kakao.maps.services.Status.OK) {
-                    const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-
-                    // Create Custom Price Bubble Overlay as the primary marker!
-                    const shortenedPrice = shortenAmount(item.dealAmount);
-                    const cleanAptName = item.aptNm.split(' ')[0]; // Keep bubble text clean
-                    
-                    const markerContent = document.createElement("div");
-                    markerContent.style.pointerEvents = "auto";
-                    markerContent.innerHTML = `
-                        <div style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border: 1.5px solid rgba(192, 132, 252, 0.6); border-radius: 20px; padding: 0.35rem 0.65rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; font-size: 0.75rem; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 75px; position: relative; z-index: 10; transition: all 0.2s;"
-                             onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.boxShadow='0 0 15px var(--accent-primary-glow)';"
-                             onmouseout="this.style.borderColor='rgba(192, 132, 252, 0.6)'; this.style.boxShadow='0 4px 15px rgba(90, 87, 107, 0.06)';"
-                             title="클릭하시면 상세 실거래 카드를 지도 위에 띄웁니다.">
-                            <div style="font-size: 0.65rem; opacity: 0.85; white-space: nowrap; max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-muted); pointer-events: none;">
-                                ${cleanAptName}
-                            </div>
-                            <div style="font-weight: 700; color: #db2777; font-size: 0.78rem; margin-top: 0.05rem; white-space: nowrap; pointer-events: none;">
-                                ${shortenedPrice}
-                            </div>
-                            <!-- Bubble Tail -->
-                            <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid rgba(255, 255, 255, 0.96); pointer-events: none;"></div>
-                        </div>
-                    `;
-
-                    const customMarker = new kakao.maps.CustomOverlay({
-                        position: coords,
-                        content: markerContent,
-                        xAnchor: 0.5,
-                        yAnchor: 1.05,
-                        clickable: true
-                    });
-
-                    customMarker.setMap(map);
-
-                    // Add pseudo-marker object for panTo compatibility
-                    const mockMarker = {
-                        getTitle: () => item.aptNm,
-                        getPosition: () => coords,
-                        setMap: (m) => customMarker.setMap(m)
-                    };
-
-                    aptGroup.marker = mockMarker;
-                    mapMarkers.push(mockMarker);
-                    bounds.extend(coords);
-
-                    // Click event on custom bubble element to open full overlay
-                    markerContent.firstElementChild.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        map.setLevel(3);
-                        map.panTo(coords);
-                        showOverlayForApt(coords, aptGroup);
-                    });
-                }
-
-                if (geocodeCount === totalToGeocode) {
-                    document.getElementById("mapStatusText").textContent = `지도에 ${mapMarkers.length}개 단지 표시됨`;
-                    if (mapMarkers.length > 0) {
-                        map.setBounds(bounds);
-                        if (mapMarkers.length === 1) {
-                            map.setLevel(4);
-                        }
-                    }
-                }
+            const customMarker = new kakao.maps.CustomOverlay({
+                position: coords,
+                content: markerContent,
+                xAnchor: 0.5,
+                yAnchor: 1.05,
+                clickable: true
             });
-        });
+
+            customMarker.setMap(map);
+
+            const mockMarker = {
+                getTitle: () => item.aptNm,
+                getPosition: () => coords,
+                setMap: (m) => customMarker.setMap(m)
+            };
+
+            aptGroup.marker = mockMarker;
+            mapMarkers.push(mockMarker);
+            bounds.extend(coords);
+
+            markerContent.firstElementChild.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                map.setLevel(3);
+                map.panTo(coords);
+                showOverlayForApt(coords, aptGroup);
+            });
+        };
+
+        // Helper: Set Map bounds
+        const finalizeBounds = () => {
+            document.getElementById("mapStatusText").textContent = `지도에 ${mapMarkers.length}개 단지 표시됨`;
+            if (mapMarkers.length > 0) {
+                map.setBounds(bounds);
+                if (mapMarkers.length === 1) {
+                    map.setLevel(4);
+                }
+            }
+        };
+
+        // Async loop to process geocoding sequentially (avoids Kakao API Rate Limits)
+        (async () => {
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const aptGroup = uniqueApts[key];
+                const item = aptGroup.item;
+                const address = `${item.sigungu || ""} ${item.dong} ${item.jibun || ""}`.trim();
+
+                // 1. Try Memory Cache first
+                if (addressCache[address]) {
+                    const coords = addressCache[address];
+                    createMarker(coords, aptGroup);
+                    geocodeCount++;
+                    document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+                    if (geocodeCount === totalToGeocode) {
+                        finalizeBounds();
+                    }
+                } else {
+                    // 2. Fetch from Kakao Geocoder API with small delay
+                    await new Promise(resolve => {
+                        geocoder.addressSearch(address, (result, status) => {
+                            geocodeCount++;
+                            if (status === kakao.maps.services.Status.OK) {
+                                const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+                                addressCache[address] = coords;
+                                createMarker(coords, aptGroup);
+                            } else {
+                                // Fallback: Search using Sigungu + Dong only (without Jibun)
+                                const fallbackAddress = `${item.sigungu || ""} ${item.dong}`.trim();
+                                geocoder.addressSearch(fallbackAddress, (fbResult, fbStatus) => {
+                                    if (fbStatus === kakao.maps.services.Status.OK) {
+                                        const coords = new kakao.maps.LatLng(fbResult[0].y, fbResult[0].x);
+                                        addressCache[address] = coords;
+                                        createMarker(coords, aptGroup);
+                                    } else {
+                                        console.warn(`주소 검색 및 폴백 실패: ${address}`);
+                                    }
+                                });
+                            }
+                            document.getElementById("mapStatusText").textContent = `위치 검색 중 (${geocodeCount}/${totalToGeocode})...`;
+                            if (geocodeCount === totalToGeocode) {
+                                finalizeBounds();
+                            }
+                            resolve();
+                        });
+                    });
+                    // Sleep 20ms to avoid burst rate-limiting from Kakao Servers
+                    await new Promise(r => setTimeout(r, 20));
+                }
+            }
+        })();
     }
 
     function showOverlayForApt(coords, aptGroup) {
