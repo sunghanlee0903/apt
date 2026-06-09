@@ -2167,14 +2167,9 @@
         const count = filteredTransactions.length;
         if (count === 0) return;
 
-        // Get pagination bounds and page items
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = Math.min(startIndex + itemsPerPage, count);
-        const pageItems = filteredTransactions.slice(startIndex, endIndex);
-
         // Group by unique apartment name + dong to avoid exact overlapping markers
         const uniqueApts = {};
-        pageItems.forEach(item => {
+        filteredTransactions.forEach(item => {
             const key = `${item.aptNm}_${item.dong}`;
             if (!uniqueApts[key]) {
                 uniqueApts[key] = {
@@ -2204,25 +2199,24 @@
                     const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
 
                     // Create Custom Price Bubble Overlay as the primary marker!
-                    const escapedAptNm = item.aptNm.replace(/'/g, "\\'");
                     const shortenedPrice = shortenAmount(item.dealAmount);
                     const cleanAptName = item.aptNm.split(' ')[0]; // Keep bubble text clean
                     
                     const markerContent = document.createElement("div");
+                    markerContent.style.pointerEvents = "auto";
                     markerContent.innerHTML = `
-                        <div onclick="window.focusApartmentOnMap('${escapedAptNm}', '${item.dong}')" 
-                             style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border: 1.5px solid rgba(192, 132, 252, 0.6); border-radius: 20px; padding: 0.35rem 0.65rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; font-size: 0.75rem; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 75px; position: relative; z-index: 10; transition: all 0.2s;"
+                        <div style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); border: 1.5px solid rgba(192, 132, 252, 0.6); border-radius: 20px; padding: 0.35rem 0.65rem; color: var(--text-main); font-family: 'Plus Jakarta Sans', 'Noto Sans KR', sans-serif; font-size: 0.75rem; box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 75px; position: relative; z-index: 10; transition: all 0.2s;"
                              onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.boxShadow='0 0 15px var(--accent-primary-glow)';"
                              onmouseout="this.style.borderColor='rgba(192, 132, 252, 0.6)'; this.style.boxShadow='0 4px 15px rgba(90, 87, 107, 0.06)';"
                              title="클릭하시면 상세 실거래 카드를 지도 위에 띄웁니다.">
-                            <div style="font-size: 0.65rem; opacity: 0.85; white-space: nowrap; max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-muted);">
+                            <div style="font-size: 0.65rem; opacity: 0.85; white-space: nowrap; max-width: 85px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-muted); pointer-events: none;">
                                 ${cleanAptName}
                             </div>
-                            <div style="font-weight: 700; color: #db2777; font-size: 0.78rem; margin-top: 0.05rem; white-space: nowrap;">
+                            <div style="font-weight: 700; color: #db2777; font-size: 0.78rem; margin-top: 0.05rem; white-space: nowrap; pointer-events: none;">
                                 ${shortenedPrice}
                             </div>
                             <!-- Bubble Tail -->
-                            <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid rgba(255, 255, 255, 0.96);"></div>
+                            <div style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid rgba(255, 255, 255, 0.96); pointer-events: none;"></div>
                         </div>
                     `;
 
@@ -2230,7 +2224,8 @@
                         position: coords,
                         content: markerContent,
                         xAnchor: 0.5,
-                        yAnchor: 1.05
+                        yAnchor: 1.05,
+                        clickable: true
                     });
 
                     customMarker.setMap(map);
@@ -2249,6 +2244,9 @@
                     // Click event on custom bubble element to open full overlay
                     markerContent.firstElementChild.addEventListener('click', (e) => {
                         e.stopPropagation();
+                        e.preventDefault();
+                        map.setLevel(3);
+                        map.panTo(coords);
                         showOverlayForApt(coords, aptGroup);
                     });
                 }
@@ -2332,13 +2330,9 @@
             return;
         }
 
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = Math.min(startIndex + itemsPerPage, count);
-        const pageItems = filteredTransactions.slice(startIndex, endIndex);
-
         // Group unique apartments by name + dong to avoid overlaps
         const uniqueApts = {};
-        pageItems.forEach(item => {
+        filteredTransactions.forEach(item => {
             const key = `${item.aptNm}_${item.dong}`;
             if (!uniqueApts[key]) {
                 uniqueApts[key] = {
@@ -2385,12 +2379,12 @@
             
             // Premium glowing custom design with price tag
             pin.innerHTML = `
-                <div style="position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                    <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(192, 132, 252, 0.3); animation: vector-pulse 1.8s infinite;"></div>
-                    <div style="width: 12px; height: 12px; border-radius: 50%; background: var(--accent-secondary); border: 2px solid white; box-shadow: 0 0 12px var(--accent-secondary);"></div>
-                    <div class="vector-pin-tag" style="position: absolute; top: 16px; background: rgba(255, 255, 255, 0.96); padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.75rem; color: var(--text-main); font-weight: 600; border: 1px solid rgba(192, 132, 252, 0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.05rem; line-height: 1.25; text-align: center;">
-                        <span style="font-size: 0.65rem; opacity: 0.85; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-weight: 500;">${cleanAptName}</span>
-                        <span style="color: #db2777; font-weight: 700; font-size: 0.78rem; white-space: nowrap;">${shortenedPrice}</span>
+                <div style="position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none;">
+                    <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(192, 132, 252, 0.3); animation: vector-pulse 1.8s infinite; pointer-events: none;"></div>
+                    <div style="width: 12px; height: 12px; border-radius: 50%; background: var(--accent-secondary); border: 2px solid white; box-shadow: 0 0 12px var(--accent-secondary); pointer-events: none;"></div>
+                    <div class="vector-pin-tag" style="position: absolute; top: 16px; background: rgba(255, 255, 255, 0.96); padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.75rem; color: var(--text-main); font-weight: 600; border: 1px solid rgba(192, 132, 252, 0.4); backdrop-filter: blur(8px); box-shadow: 0 4px 15px rgba(90, 87, 107, 0.06); transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.05rem; line-height: 1.25; text-align: center; pointer-events: none;">
+                        <span style="font-size: 0.65rem; opacity: 0.85; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-weight: 500; pointer-events: none;">${cleanAptName}</span>
+                        <span style="color: #db2777; font-weight: 700; font-size: 0.78rem; white-space: nowrap; pointer-events: none;">${shortenedPrice}</span>
                     </div>
                 </div>
             `;
@@ -2398,6 +2392,7 @@
             // Click Handler
             pin.addEventListener("click", (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 showVectorOverlay(xPercent, yPercent, aptGroup);
             });
             
