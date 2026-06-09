@@ -140,9 +140,8 @@
             margin-top: 0.25rem;
         }
 
-        /* Status Badge */
         .status-badge {
-            display: flex;
+            display: none !important; /* Hide status badge completely */
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
@@ -189,7 +188,7 @@
 
         /* Fallback Alert Banner */
         .alert-banner {
-            display: none;
+            display: none !important; /* Hide alert banner completely */
             align-items: center;
             gap: 1rem;
             padding: 1rem 1.5rem;
@@ -1501,7 +1500,7 @@
             } else {
                 apiStatusDot.className = "status-dot demo";
                 apiStatusText.textContent = "데모 시뮬레이션 모드";
-                demoAlertBanner.style.display = "flex";
+                demoAlertBanner.style.display = "none";
                 demoAlertMsg.textContent = payload.message || "API 인증키 활성화 대기 중으로, 고품질 데이터 시뮬레이션 모드로 작동합니다.";
             }
 
@@ -1512,7 +1511,7 @@
             console.error("Error fetching transactions", err);
             apiStatusDot.className = "status-dot demo";
             apiStatusText.textContent = "네트워크 통신 오류";
-            demoAlertBanner.style.display = "flex";
+            demoAlertBanner.style.display = "none";
             demoAlertMsg.textContent = "서버와의 연결이 원활하지 않아 로컬 데이터 조회 모드로 실행되었습니다.";
         } finally {
             toggleLoaders(false);
