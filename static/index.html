@@ -1560,6 +1560,20 @@
         return `${man}만`;
     }
 
+    // Helper to calculate price range (e.g. 15.5억~18.7억) for a group of deals
+    function getPriceRange(deals) {
+        if (!deals || deals.length === 0) return "0원";
+        const prices = deals.map(d => parseInt(d.dealAmount.replace(/,/g, '').trim(), 10));
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const formatIntToAmountStr = (val) => val.toLocaleString();
+        if (minPrice === maxPrice) {
+            return shortenAmount(formatIntToAmountStr(minPrice));
+        } else {
+            return `${shortenAmount(formatIntToAmountStr(minPrice))}~${shortenAmount(formatIntToAmountStr(maxPrice))}`;
+        }
+    }
+
     // Filters and Renders data
     function applyFiltersAndRender() {
         const query = searchInput.value.toLowerCase().trim();
@@ -2192,7 +2206,7 @@
         // Helper: Create Custom Price Overlay Marker
         const createMarker = (coords, aptGroup) => {
             const item = aptGroup.item;
-            const shortenedPrice = shortenAmount(item.dealAmount);
+            const shortenedPrice = getPriceRange(aptGroup.deals);
             const cleanAptName = item.aptNm.split(' ')[0];
             
             const markerContent = document.createElement("div");
@@ -2423,7 +2437,7 @@
             pin.style.zIndex = "5";
             pin.style.transition = "all 0.3s ease";
             
-            const shortenedPrice = shortenAmount(item.dealAmount);
+            const shortenedPrice = getPriceRange(aptGroup.deals);
             const cleanAptName = item.aptNm.split(' ')[0]; // Keep bubble text clean
             
             // Premium glowing custom design with price tag
