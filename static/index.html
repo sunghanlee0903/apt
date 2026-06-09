@@ -2249,7 +2249,7 @@
                     // Click event on custom bubble element to open full overlay
                     markerContent.firstElementChild.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        showOverlayForApt(coords, aptGroup);
+                        openDetailModal(aptGroup.item);
                     });
                 }
 
@@ -2393,7 +2393,7 @@
             // Click Handler
             pin.addEventListener("click", (e) => {
                 e.stopPropagation();
-                showVectorOverlay(xPercent, yPercent, aptGroup);
+                openDetailModal(aptGroup.item);
             });
             
             canvas.appendChild(pin);
